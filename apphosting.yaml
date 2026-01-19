@@ -1,0 +1,7 @@
+kind: "AppStack"
+schemaVersion: "v1"
+
+env:
+  - variable: NEXT_PUBLIC_API_URL
+    value: "https://c59f24a745e3.ngrok-free.app"
+    availability: ["BUILD", "RUNTIME"]
