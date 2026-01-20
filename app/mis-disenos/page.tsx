@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Folder, MoreVertical, Plus, ImageIcon, Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import Image from "next/image";
 
 export default function MyDesignsPage() {
   const folders = [
@@ -130,11 +130,12 @@ export default function MyDesignsPage() {
                   >
                     <div className="aspect-square bg-enfasis-6 relative flex items-center justify-center p-4">
                       {/* LA IMAGEN REAL DESDE LA URL FIRMADA */}
-                      <img
+                      <Image
                         src={design.url}
-                        className="w-full h-full object-contain"
                         alt={design.name}
-                        loading="lazy"
+                        fill // Ocupa todo el contenedor padre
+                        className="object-contain" // Mantiene la proporción del zapato
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" // Ayuda a Next a elegir el tamaño real
                       />
                       <div className="absolute top-3 right-3">
                         <Button

@@ -14,6 +14,7 @@ import { Upload, X, Save, CheckCircle2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 export default function GeneratorPage() {
   const baseUrl = process.env.NEXT_PUBLIC_API_URL;
@@ -26,7 +27,7 @@ export default function GeneratorPage() {
   const [sketchPreview, setSketchPreview] = useState<string | null>(null);
   const [sketchFile, setSketchFile] = useState<File | null>(null);
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(
-    null
+    null,
   );
   const [generatedBlob, setGeneratedBlob] = useState<Blob | null>(null); // Guardar el blob para enviar a GCS
 

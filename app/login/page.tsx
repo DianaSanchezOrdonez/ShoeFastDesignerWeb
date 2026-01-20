@@ -13,7 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Eye, EyeOff, Loader2, Footprints } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import Cookies from "js-cookie";
 
@@ -54,9 +54,9 @@ export default function LoginPage() {
 
       router.push("/");
       router.refresh(); // Refresca para que el layout detecte el cambio
-    } catch (error: any) {
+    } catch (error) {
       toast.error("Error de acceso", {
-        description: error.message,
+        description: "Credenciales inválidas. Por favor, inténtalo de nuevo.",
         icon: null,
       });
     } finally {
