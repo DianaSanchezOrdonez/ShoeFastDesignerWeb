@@ -94,7 +94,7 @@ export default function LoginPage() {
         icon: null,
       });
       setResetEmail("");
-    } catch (error: any) {
+    } catch (error) {
       toast.error("Error", {
         description: "No pudimos enviar el correo. Verifica el email.",
         icon: null,
