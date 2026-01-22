@@ -1,23 +1,46 @@
 import { NextRequest, NextResponse } from "next/server";
-
+import { decodeJwt } from "jose";
 export function middleware(request: NextRequest) {
-  const token = request.cookies.get("auth_token");
+  const token = request.cookies.get("auth_token")?.value;
   const { pathname } = request.nextUrl;
 
-  // 1. Si el usuario NO está logueado y trata de ir a rutas protegidas
-  if (!token && pathname !== "/login") {
+  const isPublicRoute = pathname === "/login";
+
+  if (!isPublicRoute && !token) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // 2. Si el usuario YA está logueado y trata de ir al login
-  if (token && pathname === "/login") {
-    return NextResponse.redirect(new URL("/", request.url));
+  if (token) {
+    try {
+      const payload = decodeJwt(token);
+      const now = Math.floor(Date.now() / 1000);
+
+      // Si el token ya expiró
+      if (payload.exp && payload.exp < now) {
+        // Borramos la cookie y mandamos al login
+        const response = NextResponse.redirect(new URL("/login", request.url));
+        response.cookies.delete("auth_token");
+        response.cookies.delete("user_email");
+        return response;
+      }
+    } catch (e) {
+      // Si el token está mal formado
+      const response = NextResponse.redirect(new URL("/login", request.url));
+      response.cookies.delete("auth_token");
+      response.cookies.delete("user_email");
+
+      return response;
+    }
+  }
+
+  // Si tiene token y va al login -> Al home
+  if (isPublicRoute && token) {
+    return NextResponse.next(); // O redireccionar a "/"
   }
 
   return NextResponse.next();
 }
 
-// Configuramos qué rutas debe vigilar el middleware
 export const config = {
-  matcher: ["/", "/mis-disenos/:path*", "/login"],
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
 };
