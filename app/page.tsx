@@ -15,15 +15,14 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import Cookies from "js-cookie";
+import { apiFetch } from "@/lib/api-client";
 
 export default function GeneratorPage() {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL;
   const router = useRouter();
 
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isSaving, setIsSaving] = useState(false); // Estado para el guardado
-
-  // Estados de datos
+  const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
   const [sketchPreview, setSketchPreview] = useState<string | null>(null);
   const [sketchFile, setSketchFile] = useState<File | null>(null);
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(
@@ -56,22 +55,22 @@ export default function GeneratorPage() {
       // Opcional: podrías pasar los parámetros actuales a la generación si tu API los usa
       // formData.append("material", material);
 
-      const response = await fetch(`${baseUrl}/sketch-to-image/shoe`, {
+      const response = await apiFetch("/sketch-to-image/shoe", {
         method: "POST",
         body: formData,
       });
 
-      if (!response.ok) throw new Error("Error en la generación de la imagen");
-
-      const blob = await response.blob();
-      setGeneratedBlob(blob); // Guardamos el blob real
-      const imageUrl = URL.createObjectURL(blob);
-      setGeneratedImageUrl(imageUrl);
+      if (response) {
+        const blob = await response.blob();
+        setGeneratedBlob(blob);
+        setGeneratedImageUrl(URL.createObjectURL(blob));
+      }
     } catch (error) {
       console.error("Error:", error);
       toast.error("Error de generación", {
         description:
-          "No pudimos procesar tu imagen. Revisa tu conexión o el servidor.",
+          // "No pudimos procesar tu imagen. Revisa tu conexión o el servidor."
+          error instanceof Error ? error.message : "Error desconocido",
         icon: null,
       });
     } finally {
@@ -91,30 +90,26 @@ export default function GeneratorPage() {
       formData.append("color", color);
       formData.append("toe", toe);
 
-      const response = await fetch(`${baseUrl}/storage/save`, {
+      const response = await apiFetch("/storage/save", {
         method: "POST",
         body: formData,
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
+      if (response) {
         toast.success("Diseño guardado", {
           description: "Se ha añadido exitosamente a tu biblioteca.",
           icon: null,
         });
-
         // Esperamos 2 segundos para que el usuario lea el toast y luego redirigimos
         setTimeout(() => {
           router.push("/mis-disenos"); // Asegúrate de que este sea el nombre de tu carpeta en /app
         }, 2000);
-      } else {
-        throw new Error(data.detail || "Error al guardar");
       }
     } catch (error) {
       console.error("Error al guardar:", error);
       toast.error("Error de guardado", {
-        description: "No se pudo guardar la imagen. Revisa tu conexión.",
+        description:
+          error instanceof Error ? error.message : "Error desconocido",
         icon: null,
       });
     } finally {
@@ -142,7 +137,6 @@ export default function GeneratorPage() {
 
   return (
     <div className="flex h-screen flex-col bg-white">
-      {/* Header */}
       <header className="flex h-16 items-center justify-between border-b border-enfasis-6 bg-white px-6 md:px-8">
         <span className="text-xl font-bold text-enfasis-1">
           ShoeFastDesigner
@@ -153,7 +147,6 @@ export default function GeneratorPage() {
       <div className="flex flex-1 flex-col md:flex-row overflow-hidden">
         <div className="flex-1 overflow-y-auto md:overflow-hidden md:flex md:flex-row">
           <aside className="w-full md:w-80 border-b md:border-b-0 md:border-r border-enfasis-6 bg-white p-6 md:overflow-y-auto md:flex-shrink-0">
-            {/* 1. Sketch Input */}
             <section className="mb-6 md:mb-8">
               <h2 className="mb-4 text-xs md:text-sm font-bold uppercase tracking-wider text-enfasis-5">
                 1. Boceto
@@ -262,7 +255,6 @@ export default function GeneratorPage() {
             </Button>
           </aside>
 
-          {/* MAIN CONTENT */}
           <section className="flex-1 bg-enfasis-6 p-6 md:p-12 md:overflow-y-auto">
             <div className="relative flex min-h-[400px] md:h-full w-full items-center justify-center rounded-2xl md:rounded-3xl border border-white bg-white shadow-xl md:shadow-2xl overflow-hidden p-4">
               {isGenerating && (

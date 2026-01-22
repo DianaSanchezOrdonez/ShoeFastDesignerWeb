@@ -4,33 +4,54 @@ import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Folder, MoreVertical, Plus, ImageIcon, Loader2 } from "lucide-react";
 import Image from "next/image";
+import { toast } from "sonner";
+import Cookies from "js-cookie";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { apiFetch } from "@/lib/api-client";
+import { formatDate } from "@/lib/utils";
 
 export default function MyDesignsPage() {
-  const folders = [
-    { name: "Colección Primavera", count: 8 },
-    { name: "Mules", count: 3 },
-    { name: "Exploraciones", count: 15 },
-  ];
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL;
+  const token = Cookies.get("auth_token");
 
   const [designs, setDesigns] = useState<
     Array<{ name: string; url: string; updated: string }>
   >([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-
-  useEffect(() => {
-    fetchDesigns();
-  }, []);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [newBucketName, setNewBucketName] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
+  const [folders, setFolders] = useState<
+    Array<{ name: string; count: number }>
+  >([]);
 
   const fetchDesigns = async () => {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-
     setIsLoading(true);
     try {
-      const response = await fetch(`${baseUrl}/storage/list`);
+      const response = await fetch(`${baseUrl}/storage/list`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const data = await response.json();
       if (data.status === "success") {
         setDesigns(data.designs);
       }
+      // const response = await apiFetch("/storage/list", { method: "GET" });
+      // if (response) {
+      //   const data = await response.json();
+      //   if (data.status === "success") {
+      //     setDesigns(data.designs);
+      //   }
+      // }
     } catch (error) {
       console.error("Error al cargar diseños:", error);
     } finally {
@@ -38,18 +59,62 @@ export default function MyDesignsPage() {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("es-ES", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
+  const fetchFolders = async () => {
+    try {
+      const response = await fetch(`${baseUrl}/storage/collections`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+      if (data.status === "success") {
+        setFolders(data.collections);
+      }
+    } catch (error) {
+      console.error("Error al cargar carpetas:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (token) {
+      fetchDesigns();
+      fetchFolders();
+    }
+  }, [token]);
+
+  const handleCreateBucket = async () => {
+    if (!newBucketName.trim()) return;
+
+    setIsCreating(true);
+
+    try {
+      const response = await apiFetch("/storage/create-bucket", {
+        method: "POST",
+        body: JSON.stringify({ collection_name: newBucketName }),
+      });
+
+      if (response) {
+        setFolders([{ name: newBucketName, count: 0 }, ...folders]);
+        setNewBucketName("");
+        setIsDialogOpen(false);
+
+        toast.success("Colección nueva creada", {
+          description: `Se ha agregado ${newBucketName} exitosamente.`,
+          icon: null,
+        });
+      }
+    } catch (error) {
+      console.error("Error creando bucket:", error);
+      toast.error("Error al crear proyecto", {
+        description:
+          "Hubo un problema al crear el nuevo proyecto. Inténtalo de nuevo.",
+      });
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   return (
     <div className="flex h-screen flex-col bg-enfasis-6">
-      {/* Header - Exactamente igual al GeneratorPage */}
       <header className="flex h-16 items-center justify-between border-b bg-white px-6 md:px-8 shrink-0">
         <span className="text-xl font-bold text-enfasis-1">
           ShoeFastDesigner
@@ -57,11 +122,8 @@ export default function MyDesignsPage() {
         <span className="text-sm text-enfasis-5">Brand Logo</span>
       </header>
 
-      {/* Contenido Principal con Scroll */}
       <div className="flex-1 overflow-y-auto">
-        {/* Container con los mismos paddings que el GeneratorPage */}
         <div className="mx-auto max-w-7xl px-6 py-8 md:px-8 md:py-10">
-          {/* Header de Sección */}
           <div className="flex items-center justify-between mb-8">
             <div>
               <h1 className="text-2xl font-bold text-enfasis-5">Mis Diseños</h1>
@@ -69,39 +131,108 @@ export default function MyDesignsPage() {
                 Gestiona tus proyectos y colecciones
               </p>
             </div>
-            <Button className="bg-enfasis-2 hover:bg-enfasis-2/90 text-white rounded-xl px-6 h-12 shadow-md font-bold text-xs tracking-wider transition-all active:scale-95">
-              <Plus className="h-4 w-4" /> Crear Proyecto
-            </Button>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-enfasis-2 hover:bg-enfasis-2/90 text-white rounded-xl px-6 h-12 shadow-md font-bold text-xs tracking-wider transition-all active:scale-95">
+                  <Plus className="h-4 w-4" /> Crear Proyecto
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px] rounded-3xl">
+                <DialogHeader>
+                  <DialogTitle className="text-enfasis-5">
+                    Nuevo Proyecto
+                  </DialogTitle>
+                  <DialogDescription>
+                    Asigna un nombre a tu nuevo proyecto para tus diseños.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <Input
+                    placeholder="Ej: Colección Verano 2026"
+                    value={newBucketName}
+                    onChange={(e) => setNewBucketName(e.target.value)}
+                    className="rounded-xl border-enfasis-6 focus:ring-enfasis-1"
+                  />
+                </div>
+                <DialogFooter>
+                  <Button
+                    variant="ghost"
+                    onClick={() => setIsDialogOpen(false)}
+                    className="rounded-xl"
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    onClick={handleCreateBucket}
+                    disabled={isCreating || !newBucketName}
+                    className="bg-enfasis-1 hover:bg-enfasis-1/90 text-white rounded-xl px-8"
+                  >
+                    {isCreating ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Creando...
+                      </>
+                    ) : (
+                      "Guardar"
+                    )}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
 
-          {/* 1. COLECCIONES (Carpetas) */}
           <section className="mb-12">
             <h2 className="mb-4 text-sm font-bold uppercase tracking-wider text-enfasis-5">
               Proyectos Recientes
             </h2>
-            <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar -mx-2 px-2">
-              {folders.map((folder) => (
-                <div
-                  key={folder.name}
-                  className="min-w-[240px] flex items-center gap-4 p-4 bg-white rounded-2xl shadow-sm border border-transparent hover:border-enfasis-1 transition-all cursor-pointer group"
-                >
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-enfasis-1/10 text-enfasis-1 group-hover:bg-enfasis-1 group-hover:text-white transition-colors">
-                    <Folder className="h-6 w-6" />
-                  </div>
-                  <div className="flex-1 overflow-hidden">
-                    <p className="font-bold text-sm text-enfasis-5 truncate">
-                      {folder.name}
-                    </p>
-                    <p className="text-xs text-enfasis-5/60">
-                      {folder.count} diseños
-                    </p>
-                  </div>
+
+            {folders.length === 0 ? (
+              <div className="flex flex-col items-center justify-center w-full py-10 bg-white/40 rounded-3xl border-2 border-dashed border-enfasis-5/10">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-enfasis-5/20 shadow-sm mb-4">
+                  <Folder className="h-7 w-7" />
                 </div>
-              ))}
-            </div>
+                <div className="text-center px-4">
+                  <p className="text-sm font-bold text-enfasis-5/70">
+                    No hay proyectos creados
+                  </p>
+                  <p className="text-[11px] text-center text-enfasis-5/40 mt-1 max-w-[200px] mx-auto leading-tight">
+                    Crea proyectos para organizar tus diseños por temporadas o
+                    estilos.
+                  </p>
+                </div>
+
+                <Button
+                  variant="ghost"
+                  onClick={() => setIsDialogOpen(true)}
+                  className="mt-4 text-enfasis-1 hover:text-enfasis-1 hover:bg-enfasis-1/5 text-[11px] font-bold uppercase tracking-tighter"
+                >
+                  <Plus className="h-3 w-3 mr-1" /> Comenzar un proyecto
+                </Button>
+              </div>
+            ) : (
+              <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar -mx-2 px-2">
+                {folders.map((folder) => (
+                  <div
+                    key={folder.name}
+                    className="min-w-[240px] flex items-center gap-4 p-4 bg-white rounded-2xl shadow-sm border border-transparent hover:border-enfasis-1 transition-all cursor-pointer group"
+                  >
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-enfasis-1/10 text-enfasis-1 group-hover:bg-enfasis-1 group-hover:text-white transition-colors">
+                      <Folder className="h-6 w-6" />
+                    </div>
+                    <div className="flex-1 overflow-hidden">
+                      <p className="font-bold text-sm text-enfasis-5 truncate">
+                        {folder.name}
+                      </p>
+                      <p className="text-xs text-enfasis-5/60">
+                        {folder.count} diseños
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
 
-          {/* 2. DISEÑOS SUELTOS (Grid) */}
           <section>
             <h2 className="mb-6 text-sm font-bold uppercase tracking-wider text-enfasis-5">
               Todos los diseños
@@ -112,12 +243,14 @@ export default function MyDesignsPage() {
                 <p className="text-enfasis-5/60 text-sm">Cargando galería...</p>
               </div>
             ) : designs.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-dashed border-enfasis-5/20">
-                <ImageIcon className="h-12 w-12 text-enfasis-5/20 mb-4" />
-                <p className="text-enfasis-5 font-medium">
+              <div className="flex flex-col items-center justify-center w-full py-10 bg-white/40 rounded-3xl border-2 border-dashed border-enfasis-5/10">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-enfasis-5/20 shadow-sm mb-4">
+                  <ImageIcon className="h-7 w-7" />
+                </div>
+                <p className="text-sm font-bold text-enfasis-5/70">
                   No hay diseños guardados
                 </p>
-                <p className="text-sm text-enfasis-5/40">
+                <p className="text-[11px] text-center text-enfasis-5/40 mt-1 max-w-[200px] mx-auto leading-tight">
                   Tus creaciones aparecerán aquí cuando las guardes.
                 </p>
               </div>
@@ -129,7 +262,6 @@ export default function MyDesignsPage() {
                     className="bg-white rounded-2xl overflow-hidden shadow-lg border border-slate-100 group transition-all hover:-translate-y-1"
                   >
                     <div className="aspect-square bg-enfasis-6 relative flex items-center justify-center p-4">
-                      {/* LA IMAGEN REAL DESDE LA URL FIRMADA */}
                       <Image
                         src={design.url}
                         alt={design.name}
