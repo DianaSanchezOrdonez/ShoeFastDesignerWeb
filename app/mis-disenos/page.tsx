@@ -2,7 +2,15 @@
 
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Folder, MoreVertical, Plus, ImageIcon, Loader2 } from "lucide-react";
+import {
+  Folder,
+  Plus,
+  ImageIcon,
+  Loader2,
+  Maximize2,
+  Download,
+  X,
+} from "lucide-react";
 import Image from "next/image";
 import { toast } from "sonner";
 import Cookies from "js-cookie";
@@ -18,6 +26,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { apiFetch } from "@/lib/api-client";
 import { formatDate } from "@/lib/utils";
+import { DesignExpander } from "@/components/design-expander";
+
+interface Design {
+  name: string;
+  url: string;
+  updated: string;
+}
 
 export default function MyDesignsPage() {
   const baseUrl = process.env.NEXT_PUBLIC_API_URL;
@@ -33,6 +48,8 @@ export default function MyDesignsPage() {
   const [folders, setFolders] = useState<
     Array<{ name: string; count: number }>
   >([]);
+  // Estado para el visualizador
+  const [selectedDesign, setSelectedDesign] = useState<Design | null>(null);
 
   const fetchDesigns = async () => {
     setIsLoading(true);
@@ -45,13 +62,6 @@ export default function MyDesignsPage() {
       if (data.status === "success") {
         setDesigns(data.designs);
       }
-      // const response = await apiFetch("/storage/list", { method: "GET" });
-      // if (response) {
-      //   const data = await response.json();
-      //   if (data.status === "success") {
-      //     setDesigns(data.designs);
-      //   }
-      // }
     } catch (error) {
       console.error("Error al cargar diseños:", error);
     } finally {
@@ -110,6 +120,38 @@ export default function MyDesignsPage() {
       });
     } finally {
       setIsCreating(false);
+    }
+  };
+
+  // Dentro de tu componente de Frontend
+  const handleDownload = async (filename: string) => {
+    try {
+      // 1. Llamamos a nuestra propia API
+      const response = await apiFetch(
+        `/storage/generate-download-url/${filename}`,
+      );
+
+      // if (response.ok) throw new Error("Error al obtener link");
+
+      if (response) {
+        const data = await response.json();
+        const secureUrl = data.download_url;
+
+        // 2. Creamos un link invisible y lo clickeamos
+        // Como la URL ya tiene 'attachment', el navegador iniciará la descarga solo
+        const link = document.createElement("a");
+        link.href = secureUrl;
+        link.setAttribute("download", filename); // Refuerzo de nombre
+        link.target = "_blank"; // Abre en pestaña invisible para no recargar la app
+
+        document.body.appendChild(link);
+        link.click();
+
+        document.body.removeChild(link);
+      }
+    } catch (error) {
+      console.error("Error en descarga:", error);
+      toast.error("No se pudo iniciar la descarga");
     }
   };
 
@@ -269,13 +311,20 @@ export default function MyDesignsPage() {
                         className="object-contain" // Mantiene la proporción del zapato
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" // Ayuda a Next a elegir el tamaño real
                       />
-                      <div className="absolute top-3 right-3">
+                      <div className="absolute inset-0 bg-enfasis-5/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
                         <Button
-                          variant="ghost"
                           size="icon"
-                          className="rounded-full bg-white/80 hover:bg-white"
+                          className="bg-white text-enfasis-5 hover:bg-enfasis-1 hover:text-white rounded-full transition-colors"
+                          onClick={() => setSelectedDesign(design)}
                         >
-                          <MoreVertical className="h-4 w-4 text-enfasis-5" />
+                          <Maximize2 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          className="bg-white text-enfasis-5 hover:bg-enfasis-1 hover:text-white rounded-full transition-colors"
+                          onClick={() => handleDownload(design.name)}
+                        >
+                          <Download className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
@@ -284,7 +333,6 @@ export default function MyDesignsPage() {
                       <div className="overflow-hidden">
                         <p className="font-bold text-sm text-enfasis-5 truncate pr-2">
                           {design.name.split("_")[0]}{" "}
-                          {/* Limpiamos un poco el nombre si usas timestamps */}
                         </p>
                         <p className="text-[10px] uppercase font-bold text-enfasis-5/40 tracking-widest">
                           {formatDate(design.updated)}
@@ -300,6 +348,14 @@ export default function MyDesignsPage() {
           </section>
         </div>
       </div>
+
+      {selectedDesign && (
+        <DesignExpander
+          design={selectedDesign}
+          onClose={() => setSelectedDesign(null)}
+          onDownload={(name) => handleDownload(name)}
+        />
+      )}
     </div>
   );
 }
