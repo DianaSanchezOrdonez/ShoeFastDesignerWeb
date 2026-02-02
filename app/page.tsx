@@ -1,24 +1,59 @@
 "use client";
 
-import React, { useState, ChangeEvent } from "react";
+import React, { useState, ChangeEvent, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Upload, X, Save, CheckCircle2 } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { Upload, X, Save, PlusCircle, Check } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
-import Cookies from "js-cookie";
 import { apiFetch } from "@/lib/api-client";
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
+import Cookies from "js-cookie";
+
+const materials = [
+  {
+    id: "cuero-negro",
+    name: "Cuero Negro",
+    image: "/materials/leather_black.jpeg",
+  },
+  {
+    id: "cuero-marron",
+    name: "Cuero Marrón",
+    image: "/materials/leather_brown.jpeg",
+  },
+  {
+    id: "cuero-rojo",
+    name: "Cuero Rojo",
+    image: "/materials/leather_red.jpeg",
+  },
+] as const;
+
+interface Project {
+  id: string;
+  name: string;
+}
 
 export default function GeneratorPage() {
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL;
+  const token = Cookies.get("auth_token");
+
   const router = useRouter();
 
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
@@ -29,16 +64,19 @@ export default function GeneratorPage() {
     null,
   );
   const [generatedBlob, setGeneratedBlob] = useState<Blob | null>(null); // Guardar el blob para enviar a GCS
-
-  // Estados de los parámetros (controlados para enviarlos al guardar)
-  const [material, setMaterial] = useState("full-grain");
-  const [color, setColor] = useState("#3ee69f");
-  const [toe, setToe] = useState("classic-round");
+  const [selectedMaterial, setSelectedMaterial] = useState<
+    (typeof materials)[number] | null
+  >(null);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
+  const [newProjectName, setNewProjectName] = useState("");
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const handleGenerate = async () => {
-    if (!sketchFile) {
+    if (!sketchFile || !selectedProjectId) {
       toast.error("Falta el boceto", {
-        description: "Por favor, sube una imagen antes de generar.",
+        description: "Asegúrate de subir un boceto y seleccionar un proyecto.",
         icon: null,
       });
       return;
@@ -51,9 +89,29 @@ export default function GeneratorPage() {
     try {
       const formData = new FormData();
       formData.append("file", sketchFile);
+      formData.append("project_id", selectedProjectId);
 
-      // Opcional: podrías pasar los parámetros actuales a la generación si tu API los usa
-      // formData.append("material", material);
+      if (selectedMaterial) {
+        try {
+          const materialResponse = await fetch(selectedMaterial.image);
+          const materialBlob = await materialResponse.blob();
+          formData.append(
+            "material_file",
+            materialBlob,
+            `${selectedMaterial.id}.jpeg`,
+          );
+          formData.append("material_id", selectedMaterial.id);
+        } catch (error) {
+          console.error("Error al cargar la imagen del material:", error);
+          toast.error("Error", {
+            description:
+              "No se pudo cargar la imagen del material seleccionado",
+            icon: null,
+          });
+          setIsGenerating(false);
+          return;
+        }
+      }
 
       const response = await apiFetch("/sketch-to-image/shoe", {
         method: "POST",
@@ -78,45 +136,6 @@ export default function GeneratorPage() {
     }
   };
 
-  const handleSaveToLibrary = async () => {
-    if (!generatedBlob) return;
-
-    setIsSaving(true);
-    try {
-      const formData = new FormData();
-      // Convertimos el blob en un archivo ficticio para el multipart
-      formData.append("file", generatedBlob, "generated-shoe.png");
-      formData.append("material", material);
-      formData.append("color", color);
-      formData.append("toe", toe);
-
-      const response = await apiFetch("/storage/save", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (response) {
-        toast.success("Diseño guardado", {
-          description: "Se ha añadido exitosamente a tu biblioteca.",
-          icon: null,
-        });
-        // Esperamos 2 segundos para que el usuario lea el toast y luego redirigimos
-        setTimeout(() => {
-          router.push("/mis-disenos"); // Asegúrate de que este sea el nombre de tu carpeta en /app
-        }, 2000);
-      }
-    } catch (error) {
-      console.error("Error al guardar:", error);
-      toast.error("Error de guardado", {
-        description:
-          error instanceof Error ? error.message : "Error desconocido",
-        icon: null,
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -134,6 +153,62 @@ export default function GeneratorPage() {
     setGeneratedImageUrl(null);
     setGeneratedBlob(null);
   };
+
+  const handleCreateProject = async () => {
+    if (!newProjectName || !sketchFile) {
+      toast.error("Datos incompletos", {
+        description: "Nombre y boceto son obligatorios",
+      });
+      return;
+    }
+
+    setIsCreatingProject(true);
+    try {
+      const formData = new FormData();
+      formData.append("name", newProjectName);
+      formData.append("file", sketchFile);
+
+      const response = await apiFetch("/projects", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (response) {
+        const data = await response.json();
+        setProjects((prev) => [...prev, data]);
+        setSelectedProjectId(data.id);
+        setIsDialogOpen(false);
+        toast.success("Proyecto creado", {
+          description: "Ahora puedes generar imágenes",
+          icon: null,
+        });
+      }
+    } catch (error) {
+      toast.error("Error al crear proyecto");
+    } finally {
+      setIsCreatingProject(false);
+    }
+  };
+
+  useEffect(() => {
+    const loadProjects = async () => {
+      try {
+        const response = await fetch(`${baseUrl}/storage/list`, {
+          method: "GET",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await response.json();
+        console.log("Proyectos cargados:", data);
+
+        // if (data.status === "success") {
+        //   setProjects(data.projects);
+        // }
+      } catch (error) {
+        console.error("Error al cargar proyectos:", error);
+      }
+    };
+    loadProjects();
+  }, []);
 
   return (
     <div className="flex h-screen flex-col bg-white">
@@ -184,71 +259,190 @@ export default function GeneratorPage() {
             </section>
 
             {/* 2. Parameters */}
-            {/* <section className="mb-6 md:mb-8">
+            <section className="mb-6 md:mb-8">
               <h2 className="mb-4 md:mb-6 text-xs md:text-sm font-bold uppercase tracking-wider text-enfasis-5">
                 2. Parámetros
               </h2>
               <div className="space-y-4 md:space-y-6">
                 <div className="space-y-2 md:space-y-3">
-                  <Label className="text-sm md:text-base font-semibold text-enfasis-5">
-                    Material
-                  </Label>
-                  <Select defaultValue="full-grain">
-                    <SelectTrigger className="h-10 md:h-12 w-full rounded-lg border-enfasis-6 bg-white shadow-sm focus:border-enfasis-1 focus:ring-2 focus:ring-enfasis-1/20">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="full-grain">
-                        Full-Grain Leather
-                      </SelectItem>
-                      <SelectItem value="suede">Suede</SelectItem>
-                      <SelectItem value="velvet">Velvet</SelectItem>
-                      <SelectItem value="synthetic">Synthetic</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2 md:space-y-3">
                   <Label className="text-sm font-semibold text-enfasis-5">
-                    Color Principal
+                    Proyecto
                   </Label>
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="h-10 md:h-12 flex-1 rounded-lg border-2 border-enfasis-6"
-                      style={{ backgroundColor: color }}
-                    />
-                    <Input
-                      type="text"
-                      value={color}
-                      onChange={(e) => setColor(e.target.value)}
-                      className="h-10 md:h-12 w-24 md:w-28 text-center font-mono text-enfasis-5"
-                    />
+
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1">
+                      <Combobox
+                        items={projects.map((p) => ({
+                          id: p.id,
+                          name: p.name,
+                        }))}
+                        value={
+                          projects.find((p) => p.id === selectedProjectId)
+                            ?.name ?? ""
+                        }
+                        onValueChange={(val) => {
+                          if (val) setSelectedProjectId(val);
+                        }}
+                      >
+                        <div className="relative">
+                          <ComboboxInput
+                            placeholder="Seleccionar proyecto..."
+                            className="h-10 md:h-12 w-full rounded-lg border-enfasis-6 bg-white shadow-sm focus:border-enfasis-1"
+                          />
+                        </div>
+                        <ComboboxContent>
+                          <ComboboxEmpty>No hay proyectos.</ComboboxEmpty>
+                          <ComboboxList>
+                            {(item) => (
+                              <ComboboxItem
+                                key={item.id}
+                                value={item.id}
+                                className="cursor-pointer"
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    selectedProjectId === item.id
+                                      ? "opacity-100"
+                                      : "opacity-0",
+                                  )}
+                                />
+                                {item.name}
+                              </ComboboxItem>
+                            )}
+                          </ComboboxList>
+                        </ComboboxContent>
+                      </Combobox>
+                    </div>
+
+                    {/* Botón Nuevo con Dialog integrado */}
+                    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button
+                          variant="outline"
+                          disabled={!sketchFile} // Validación: Requiere boceto primero
+                          className={cn(
+                            "h-10 md:h-12 border-enfasis-6 px-3 text-enfasis-1 hover:text-enfasis-1 hover:bg-enfasis-6 transition-all",
+                            !sketchFile &&
+                              "opacity-50 grayscale cursor-not-allowed",
+                          )}
+                        >
+                          <PlusCircle className="h-4 w-4 md:mr-1" />
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-[425px]">
+                        <DialogHeader>
+                          <DialogTitle className="text-enfasis-1">
+                            Nuevo Proyecto
+                          </DialogTitle>
+                        </DialogHeader>
+                        <div className="py-6 space-y-4">
+                          <div className="space-y-2">
+                            <Label
+                              htmlFor="project-name"
+                              className="text-enfasis-5 font-semibold"
+                            >
+                              Nombre del proyecto
+                            </Label>
+                            <Input
+                              id="project-name"
+                              placeholder="Ej: Zapatilla Urban Pro"
+                              value={newProjectName}
+                              onChange={(e) =>
+                                setNewProjectName(e.target.value)
+                              }
+                              className="border-enfasis-6 focus:border-enfasis-1"
+                            />
+                          </div>
+                          <div className="bg-slate-50 p-3 rounded-lg border border-dashed border-enfasis-6">
+                            <p className="text-[11px] text-enfasis-5/80 italic leading-relaxed">
+                              * Al crear el proyecto, el boceto que subiste se
+                              vinculará como la base de este proyecto.
+                            </p>
+                          </div>
+                        </div>
+                        <DialogFooter>
+                          <Button
+                            className="w-full bg-enfasis-1 hover:bg-enfasis-1/90"
+                            onClick={handleCreateProject}
+                            disabled={isCreatingProject || !newProjectName}
+                          >
+                            {isCreatingProject ? (
+                              <div className="flex items-center gap-2">
+                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                                Creando...
+                              </div>
+                            ) : (
+                              "Confirmar y Crear"
+                            )}
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
                   </div>
                 </div>
 
                 <div className="space-y-2 md:space-y-3">
                   <Label className="text-sm font-semibold text-enfasis-5">
-                    Punta
+                    Material
                   </Label>
-                  <Select value={toe} onValueChange={setToe}>
-                    <SelectTrigger className="h-10 md:h-12 w-full rounded-lg border-enfasis-6 bg-white shadow-sm focus:border-enfasis-1 focus:ring-2 focus:ring-enfasis-1/20">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="classic-round">
-                        Punta ovalada
-                      </SelectItem>
-                      <SelectItem value="pointed">Punta triangular</SelectItem>
-                      <SelectItem value="square">Punta cuadrada</SelectItem>
-                    </SelectContent>
-                  </Select>
+
+                  <Combobox
+                    items={materials}
+                    value={selectedMaterial?.name ?? ""}
+                    onValueChange={(value) => {
+                      // Ignorar valores vacíos, undefined, null
+                      if (!value || value === "" || value === undefined) {
+                        console.log("Ignorando valor inválido");
+                        return;
+                      }
+
+                      const material = materials.find((m) => m.id === value);
+
+                      if (material) {
+                        console.log("Material válido encontrado:", material);
+                        setSelectedMaterial(material);
+                      }
+                    }}
+                  >
+                    <ComboboxInput
+                      placeholder="Seleccionar material..."
+                      className="h-10 md:h-12 w-full rounded-lg border-enfasis-6 bg-white shadow-sm focus:border-enfasis-1"
+                    />
+                    <ComboboxContent>
+                      <ComboboxEmpty>
+                        No se encontraron materiales.
+                      </ComboboxEmpty>
+                      <ComboboxList>
+                        {(item) => (
+                          <ComboboxItem
+                            key={item.id}
+                            value={item.id}
+                            className="flex items-center gap-3 p-2 cursor-pointer"
+                          >
+                            <div className="h-10 w-10 shrink-0 overflow-hidden rounded-md border border-gray-100 shadow-sm">
+                              <img
+                                src={item.image}
+                                alt={item.name}
+                                className="h-full w-full object-cover"
+                              />
+                            </div>
+
+                            <span className="flex-1 font-medium text-gray-700">
+                              {item.name}
+                            </span>
+                          </ComboboxItem>
+                        )}
+                      </ComboboxList>
+                    </ComboboxContent>
+                  </Combobox>
                 </div>
               </div>
-            </section> */}
+            </section>
 
             <Button
               onClick={handleGenerate}
-              disabled={isGenerating || !sketchFile}
+              disabled={isGenerating || !sketchFile || !selectedProjectId}
               className="w-full bg-enfasis-1 hover:bg-enfasis-1/90 h-12 md:h-14 md:py-6 text-base md:text-lg font-bold rounded-xl"
             >
               {isGenerating ? "Generando..." : "Generar Diseño"}
@@ -275,19 +469,6 @@ export default function GeneratorPage() {
                       className="w-full h-full object-contain"
                     />
                   </div>
-
-                  <Button
-                    onClick={handleSaveToLibrary}
-                    disabled={isSaving}
-                    className="absolute bottom-4 right-4 md:bottom-8 md:right-8 bg-enfasis-1 hover:bg-enfasis-1/90 text-white flex gap-2 items-center shadow-lg"
-                  >
-                    {isSaving ? (
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    ) : (
-                      <Save className="h-4 w-4" />
-                    )}
-                    {isSaving ? "Guardando..." : "Guardar"}
-                  </Button>
                 </>
               )}
 
