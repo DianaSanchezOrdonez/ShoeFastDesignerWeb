@@ -168,7 +168,7 @@ export default function GeneratorPage() {
       formData.append("name", newProjectName);
       formData.append("file", sketchFile);
 
-      const response = await apiFetch("/projects", {
+      const response = await apiFetch("/projects/", {
         method: "POST",
         body: formData,
       });
