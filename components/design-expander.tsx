@@ -2,19 +2,9 @@
 
 import React, { useState, useRef } from "react";
 import Image from "next/image";
-import { X, Download, ZoomIn, ZoomOut, Move } from "lucide-react";
+import { X, Download, ZoomIn, Move } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-interface Design {
-  name: string;
-  url: string;
-}
-
-interface DesignExpanderProps {
-  design: Design | null;
-  onClose: () => void;
-  onDownload: (name: string) => void;
-}
+import { DesignExpanderProps } from "@/types";
 
 export function DesignExpander({
   design,
@@ -57,7 +47,7 @@ export function DesignExpander({
           <Button
             variant="outline"
             className="bg-white border-neutral-200 text-neutral-700 hover:bg-neutral-50 rounded-2xl px-6 h-11 shadow-sm transition-all"
-            onClick={() => onDownload(design.name)}
+            onClick={() => onDownload(design.blob_path)}
           >
             <Download className="h-4 w-4 mr-2" />
             Descargar Diseño
