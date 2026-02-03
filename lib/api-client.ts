@@ -2,6 +2,8 @@ import Cookies from "js-cookie";
 
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   const token = Cookies.get("auth_token");
+  const method = options.method?.toUpperCase() || "GET";
+
   const headers = new Headers(options.headers);
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
@@ -9,7 +11,15 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
     headers.set("Content-Type", "application/json");
   }
 
-  const config = { ...options, headers };
+  const config: RequestInit = {
+    ...options,
+    method,
+    headers,
+  };
+
+  if (method === "GET" || method === "HEAD") {
+    delete config.body;
+  }
 
   try {
     const response = await fetch(

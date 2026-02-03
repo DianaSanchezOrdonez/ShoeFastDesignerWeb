@@ -3,44 +3,26 @@
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  Folder,
-  Plus,
   ImageIcon,
   Loader2,
   Maximize2,
   Download,
   X,
+  Clock,
 } from "lucide-react";
 import Image from "next/image";
 import { toast } from "sonner";
 import Cookies from "js-cookie";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { apiFetch } from "@/lib/api-client";
 import { formatDate } from "@/lib/utils";
 import { DesignExpander } from "@/components/design-expander";
-
-interface Design {
-  name: string;
-  url: string;
-  updated: string;
-}
+import { WorkflowWithGeneration } from "@/types";
+import { HistoryDialog } from "@/components/history-dialog";
 
 export default function MyDesignsPage() {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL;
   const token = Cookies.get("auth_token");
 
-  const [designs, setDesigns] = useState<
-    Array<{ name: string; url: string; updated: string }>
-  >([]);
+  const [designs, setDesigns] = useState<Array<WorkflowWithGeneration>>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newBucketName, setNewBucketName] = useState("");
@@ -48,19 +30,21 @@ export default function MyDesignsPage() {
   const [folders, setFolders] = useState<
     Array<{ name: string; count: number }>
   >([]);
-  // Estado para el visualizador
-  const [selectedDesign, setSelectedDesign] = useState<Design | null>(null);
+  const [selectedDesign, setSelectedDesign] =
+    useState<WorkflowWithGeneration | null>(null);
+  const [historyWorkflow, setHistoryWorkflow] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   const fetchDesigns = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${baseUrl}/storage/list`, {
-        method: "GET",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await response.json();
-      if (data.status === "success") {
-        setDesigns(data.designs);
+      const response = await apiFetch("/workflows/latest-generation");
+
+      if (response) {
+        const data = await response.json();
+        setDesigns(data);
       }
     } catch (error) {
       console.error("Error al cargar diseños:", error);
@@ -71,12 +55,10 @@ export default function MyDesignsPage() {
 
   const fetchFolders = async () => {
     try {
-      const response = await fetch(`${baseUrl}/storage/collections`, {
-        method: "GET",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await response.json();
-      if (data.status === "success") {
+      const response = await apiFetch("/storage/collections");
+
+      if (response) {
+        const data = await response.json();
         setFolders(data.collections);
       }
     } catch (error) {
@@ -114,34 +96,30 @@ export default function MyDesignsPage() {
       }
     } catch (error) {
       console.error("Error creando bucket:", error);
-      toast.error("Error al crear proyecto", {
+      toast.error("Error al crear flujo", {
         description:
-          "Hubo un problema al crear el nuevo proyecto. Inténtalo de nuevo.",
+          "Hubo un problema al crear el nuevo flujo de diseño. Inténtalo de nuevo.",
       });
     } finally {
       setIsCreating(false);
     }
   };
 
-  // Dentro de tu componente de Frontend
-  const handleDownload = async (filename: string) => {
+  const handleDownload = async (blobPath: string) => {
     try {
-      // 1. Llamamos a nuestra propia API
       const response = await apiFetch(
-        `/storage/generate-download-url/${filename}`,
+        `/workflows/generate-download-url/${blobPath}`,
       );
-
-      // if (response.ok) throw new Error("Error al obtener link");
 
       if (response) {
         const data = await response.json();
         const secureUrl = data.download_url;
 
-        // 2. Creamos un link invisible y lo clickeamos
+        // Creamos un link invisible y lo clickeamos
         // Como la URL ya tiene 'attachment', el navegador iniciará la descarga solo
         const link = document.createElement("a");
         link.href = secureUrl;
-        link.setAttribute("download", filename); // Refuerzo de nombre
+        link.setAttribute("download", blobPath); // Refuerzo de nombre
         link.target = "_blank"; // Abre en pestaña invisible para no recargar la app
 
         document.body.appendChild(link);
@@ -170,10 +148,10 @@ export default function MyDesignsPage() {
             <div>
               <h1 className="text-2xl font-bold text-enfasis-5">Mis Diseños</h1>
               <p className="text-sm text-enfasis-5/70">
-                Gestiona tus proyectos y colecciones
+                Gestiona tus flujos de diseño y colecciones
               </p>
             </div>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            {/* <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <Button className="bg-enfasis-2 hover:bg-enfasis-2/90 text-white rounded-xl px-6 h-12 shadow-md font-bold text-xs tracking-wider transition-all active:scale-95">
                   <Plus className="h-4 w-4" /> Crear Proyecto
@@ -220,10 +198,10 @@ export default function MyDesignsPage() {
                   </Button>
                 </DialogFooter>
               </DialogContent>
-            </Dialog>
+            </Dialog> */}
           </div>
 
-          <section className="mb-12">
+          {/* <section className="mb-12">
             <h2 className="mb-4 text-sm font-bold uppercase tracking-wider text-enfasis-5">
               Proyectos Recientes
             </h2>
@@ -273,7 +251,7 @@ export default function MyDesignsPage() {
                 ))}
               </div>
             )}
-          </section>
+          </section> */}
 
           <section>
             <h2 className="mb-6 text-sm font-bold uppercase tracking-wider text-enfasis-5">
@@ -284,7 +262,7 @@ export default function MyDesignsPage() {
                 <Loader2 className="h-8 w-8 animate-spin text-enfasis-1 mb-2" />
                 <p className="text-enfasis-5/60 text-sm">Cargando galería...</p>
               </div>
-            ) : designs.length === 0 ? (
+            ) : designs?.length === 0 ? (
               <div className="flex flex-col items-center justify-center w-full py-10 bg-white/40 rounded-3xl border-2 border-dashed border-enfasis-5/10">
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-enfasis-5/20 shadow-sm mb-4">
                   <ImageIcon className="h-7 w-7" />
@@ -305,13 +283,26 @@ export default function MyDesignsPage() {
                   >
                     <div className="aspect-square bg-enfasis-6 relative flex items-center justify-center p-4">
                       <Image
-                        src={design.url}
+                        src={design.latest_generation.image_url ?? ""}
                         alt={design.name}
                         fill // Ocupa todo el contenedor padre
                         className="object-contain" // Mantiene la proporción del zapato
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" // Ayuda a Next a elegir el tamaño real
                       />
                       <div className="absolute inset-0 bg-enfasis-5/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                        <Button
+                          size="icon"
+                          className="bg-white text-enfasis-5 hover:bg-enfasis-1 hover:text-white rounded-full transition-colors"
+                          onClick={() =>
+                            setHistoryWorkflow({
+                              id: design.id,
+                              name: design.name,
+                            })
+                          }
+                        >
+                          <Clock className="h-4 w-4" />
+                        </Button>
+
                         <Button
                           size="icon"
                           className="bg-white text-enfasis-5 hover:bg-enfasis-1 hover:text-white rounded-full transition-colors"
@@ -322,7 +313,11 @@ export default function MyDesignsPage() {
                         <Button
                           size="icon"
                           className="bg-white text-enfasis-5 hover:bg-enfasis-1 hover:text-white rounded-full transition-colors"
-                          onClick={() => handleDownload(design.name)}
+                          onClick={() =>
+                            handleDownload(
+                              design.latest_generation.image_blob_path,
+                            )
+                          }
                         >
                           <Download className="h-4 w-4" />
                         </Button>
@@ -335,7 +330,7 @@ export default function MyDesignsPage() {
                           {design.name.split("_")[0]}{" "}
                         </p>
                         <p className="text-[10px] uppercase font-bold text-enfasis-5/40 tracking-widest">
-                          {formatDate(design.updated)}
+                          {formatDate(design.latest_generation.created_at)}
                         </p>
                       </div>
                       {/* Un punto de color por defecto ya que el Bucket no guarda el color del zapato */}
@@ -351,9 +346,24 @@ export default function MyDesignsPage() {
 
       {selectedDesign && (
         <DesignExpander
-          design={selectedDesign}
+          design={{
+            name: selectedDesign.name,
+            url: selectedDesign.latest_generation.image_url,
+            blob_path: selectedDesign.latest_generation.image_blob_path,
+            updated: selectedDesign.updated_at,
+          }}
           onClose={() => setSelectedDesign(null)}
-          onDownload={(name) => handleDownload(name)}
+          onDownload={(path) => handleDownload(path)}
+        />
+      )}
+
+      {historyWorkflow && (
+        <HistoryDialog
+          workflowId={historyWorkflow?.id || null}
+          workflowName={historyWorkflow?.name || ""}
+          isOpen={!!historyWorkflow}
+          onClose={() => setHistoryWorkflow(null)}
+          onDownload={(path) => handleDownload(path)}
         />
       )}
     </div>

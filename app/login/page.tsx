@@ -56,7 +56,6 @@ export default function LoginPage() {
         throw new Error(data.detail || "Error en la autenticación");
       }
 
-      // Guardamos el token en una cookie (expira en 1 día)
       Cookies.set("auth_token", data.idToken, { expires: 1 });
       Cookies.set("user_email", data.email, { expires: 1 });
 
@@ -201,7 +200,7 @@ export default function LoginPage() {
 
           <Dialog>
             <DialogTrigger asChild>
-              <button className="text-sm font-medium text-[#4c9eff] hover:underline transition-all">
+              <button className="text-sm font-medium text-enfasis-2 hover:underline transition-all">
                 ¿Deseas elegir tu propia contraseña? <br /> Resetear aquí
               </button>
             </DialogTrigger>
@@ -211,7 +210,7 @@ export default function LoginPage() {
                 <DialogTitle className="text-xl font-bold text-enfasis-1">
                   Resetear Contraseña
                 </DialogTitle>
-                <DialogDescription className="text-[#979797]">
+                <DialogDescription className="text-enfasis-5">
                   Te enviaremos un enlace a tu correo para que puedas cambiar la
                   contraseña aleatoria por una que tú elijas.
                 </DialogDescription>
@@ -221,7 +220,7 @@ export default function LoginPage() {
                 <div className="space-y-2">
                   <Label
                     htmlFor="reset-email"
-                    className="text-xs font-bold uppercase text-[#979797]"
+                    className="text-xs font-bold uppercase text-enfasis-5"
                   >
                     Tu correo registrado
                   </Label>
@@ -230,7 +229,7 @@ export default function LoginPage() {
                     placeholder="ejemplo@correo.com"
                     value={resetEmail}
                     onChange={(e) => setResetEmail(e.target.value)}
-                    className="h-12 rounded-xl border-[#f3f3f3] bg-[#f3f3f3]"
+                    className="h-12 rounded-xl border-enfasis-6 bg-enfasis-6"
                   />
                 </div>
               </div>

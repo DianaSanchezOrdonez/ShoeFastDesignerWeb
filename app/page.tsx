@@ -3,9 +3,8 @@
 import React, { useState, ChangeEvent, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Upload, X, Save, PlusCircle, Check } from "lucide-react";
+import { Upload, X, Check, Plus } from "lucide-react";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api-client";
 import {
   Combobox,
@@ -25,7 +24,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import Cookies from "js-cookie";
 
 const materials = [
   {
@@ -45,38 +43,33 @@ const materials = [
   },
 ] as const;
 
-interface Project {
+interface Workflow {
   id: string;
   name: string;
 }
 
 export default function GeneratorPage() {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-  const token = Cookies.get("auth_token");
-
-  const router = useRouter();
-
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
-  const [isSaving, setIsSaving] = useState<boolean>(false);
   const [sketchPreview, setSketchPreview] = useState<string | null>(null);
   const [sketchFile, setSketchFile] = useState<File | null>(null);
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(
     null,
   );
-  const [generatedBlob, setGeneratedBlob] = useState<Blob | null>(null); // Guardar el blob para enviar a GCS
+  const [generatedBlob, setGeneratedBlob] = useState<Blob | null>(null);
   const [selectedMaterial, setSelectedMaterial] = useState<
     (typeof materials)[number] | null
   >(null);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
-  const [newProjectName, setNewProjectName] = useState("");
-  const [isCreatingProject, setIsCreatingProject] = useState(false);
+  const [workflows, setWorkflows] = useState<Workflow[]>([]);
+  const [selectedWorkflowId, setSelectedWorkflowId] = useState<string>("");
+  const [newWorkflowName, setNewWorkflowName] = useState("");
+  const [isCreatingWorkflow, setIsCreatingWorkflow] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const handleGenerate = async () => {
-    if (!sketchFile || !selectedProjectId) {
+    if (!sketchFile || !selectedWorkflowId) {
       toast.error("Falta el boceto", {
-        description: "Asegúrate de subir un boceto y seleccionar un proyecto.",
+        description:
+          "Asegúrate de subir un boceto y seleccionar un flujo de diseño.",
         icon: null,
       });
       return;
@@ -89,7 +82,7 @@ export default function GeneratorPage() {
     try {
       const formData = new FormData();
       formData.append("file", sketchFile);
-      formData.append("project_id", selectedProjectId);
+      formData.append("workflow_id", selectedWorkflowId);
 
       if (selectedMaterial) {
         try {
@@ -154,60 +147,57 @@ export default function GeneratorPage() {
     setGeneratedBlob(null);
   };
 
-  const handleCreateProject = async () => {
-    if (!newProjectName || !sketchFile) {
+  const handleCreateWorkflow = async () => {
+    if (!newWorkflowName || !sketchFile) {
       toast.error("Datos incompletos", {
         description: "Nombre y boceto son obligatorios",
+        icon: null,
       });
       return;
     }
 
-    setIsCreatingProject(true);
+    setIsCreatingWorkflow(true);
     try {
       const formData = new FormData();
-      formData.append("name", newProjectName);
+      formData.append("name", newWorkflowName);
       formData.append("file", sketchFile);
 
-      const response = await apiFetch("/projects/", {
+      const response = await apiFetch("/workflows/", {
         method: "POST",
         body: formData,
       });
 
       if (response) {
         const data = await response.json();
-        setProjects((prev) => [...prev, data]);
-        setSelectedProjectId(data.id);
+        setWorkflows((prev) => [...prev, data]);
+        setSelectedWorkflowId(data.id);
         setIsDialogOpen(false);
-        toast.success("Proyecto creado", {
+        toast.success("Flujo de diseño creado", {
           description: "Ahora puedes generar imágenes",
           icon: null,
         });
       }
     } catch (error) {
-      toast.error("Error al crear proyecto");
+      toast.error("Error al crear flujo de diseño");
     } finally {
-      setIsCreatingProject(false);
+      setIsCreatingWorkflow(false);
     }
   };
 
   useEffect(() => {
-    const loadProjects = async () => {
+    const loadWorkflows = async () => {
       try {
-        const response = await fetch(`${baseUrl}/storage/list`, {
-          method: "GET",
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await response.json();
-        console.log("Proyectos cargados:", data);
+        const response = await apiFetch("/workflows/");
 
-        // if (data.status === "success") {
-        //   setProjects(data.projects);
-        // }
+        if (response) {
+          const data = await response.json();
+          setWorkflows(data);
+        }
       } catch (error) {
-        console.error("Error al cargar proyectos:", error);
+        console.error("Error al cargar flujos de diseño:", error);
       }
     };
-    loadProjects();
+    loadWorkflows();
   }, []);
 
   return (
@@ -258,130 +248,126 @@ export default function GeneratorPage() {
               </div>
             </section>
 
-            {/* 2. Parameters */}
             <section className="mb-6 md:mb-8">
-              <h2 className="mb-4 md:mb-6 text-xs md:text-sm font-bold uppercase tracking-wider text-enfasis-5">
-                2. Parámetros
+              <h2 className="mb-4 text-xs md:text-sm font-bold uppercase tracking-wider text-enfasis-5">
+                2. Flujo de Diseño
               </h2>
-              <div className="space-y-4 md:space-y-6">
-                <div className="space-y-2 md:space-y-3">
-                  <Label className="text-sm font-semibold text-enfasis-5">
-                    Proyecto
-                  </Label>
 
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1">
-                      <Combobox
-                        items={projects.map((p) => ({
-                          id: p.id,
-                          name: p.name,
-                        }))}
-                        value={
-                          projects.find((p) => p.id === selectedProjectId)
-                            ?.name ?? ""
-                        }
-                        onValueChange={(val) => {
-                          if (val) setSelectedProjectId(val);
-                        }}
-                      >
-                        <div className="relative">
-                          <ComboboxInput
-                            placeholder="Seleccionar proyecto..."
-                            className="h-10 md:h-12 w-full rounded-lg border-enfasis-6 bg-white shadow-sm focus:border-enfasis-1"
-                          />
-                        </div>
-                        <ComboboxContent>
-                          <ComboboxEmpty>No hay proyectos.</ComboboxEmpty>
-                          <ComboboxList>
-                            {(item) => (
-                              <ComboboxItem
-                                key={item.id}
-                                value={item.id}
-                                className="cursor-pointer"
-                              >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    selectedProjectId === item.id
-                                      ? "opacity-100"
-                                      : "opacity-0",
-                                  )}
-                                />
-                                {item.name}
-                              </ComboboxItem>
-                            )}
-                          </ComboboxList>
-                        </ComboboxContent>
-                      </Combobox>
+              <div className="flex items-center gap-2">
+                <div className="flex-1">
+                  <Combobox
+                    items={workflows?.map((w) => ({
+                      id: w.id,
+                      name: w.name,
+                    }))}
+                    value={
+                      workflows?.find((w) => w.id === selectedWorkflowId)
+                        ?.name ?? ""
+                    }
+                    onValueChange={(val) => {
+                      if (val) setSelectedWorkflowId(val);
+                    }}
+                  >
+                    <div className="relative">
+                      <ComboboxInput
+                        placeholder="Seleccionar flujo..."
+                        className="h-10 md:h-12 w-full rounded-lg border-enfasis-6 bg-white shadow-sm focus:border-enfasis-1"
+                      />
                     </div>
-
-                    {/* Botón Nuevo con Dialog integrado */}
-                    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                      <DialogTrigger asChild>
-                        <Button
-                          variant="outline"
-                          disabled={!sketchFile} // Validación: Requiere boceto primero
-                          className={cn(
-                            "h-10 md:h-12 border-enfasis-6 px-3 text-enfasis-1 hover:text-enfasis-1 hover:bg-enfasis-6 transition-all",
-                            !sketchFile &&
-                              "opacity-50 grayscale cursor-not-allowed",
-                          )}
-                        >
-                          <PlusCircle className="h-4 w-4 md:mr-1" />
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="sm:max-w-[425px]">
-                        <DialogHeader>
-                          <DialogTitle className="text-enfasis-1">
-                            Nuevo Proyecto
-                          </DialogTitle>
-                        </DialogHeader>
-                        <div className="py-6 space-y-4">
-                          <div className="space-y-2">
-                            <Label
-                              htmlFor="project-name"
-                              className="text-enfasis-5 font-semibold"
-                            >
-                              Nombre del proyecto
-                            </Label>
-                            <Input
-                              id="project-name"
-                              placeholder="Ej: Zapatilla Urban Pro"
-                              value={newProjectName}
-                              onChange={(e) =>
-                                setNewProjectName(e.target.value)
-                              }
-                              className="border-enfasis-6 focus:border-enfasis-1"
-                            />
-                          </div>
-                          <div className="bg-slate-50 p-3 rounded-lg border border-dashed border-enfasis-6">
-                            <p className="text-[11px] text-enfasis-5/80 italic leading-relaxed">
-                              * Al crear el proyecto, el boceto que subiste se
-                              vinculará como la base de este proyecto.
-                            </p>
-                          </div>
-                        </div>
-                        <DialogFooter>
-                          <Button
-                            className="w-full bg-enfasis-1 hover:bg-enfasis-1/90"
-                            onClick={handleCreateProject}
-                            disabled={isCreatingProject || !newProjectName}
+                    <ComboboxContent>
+                      <ComboboxEmpty>No hay flujo de diseños.</ComboboxEmpty>
+                      <ComboboxList>
+                        {(item) => (
+                          <ComboboxItem
+                            key={item.id}
+                            value={item.id}
+                            className="cursor-pointer"
                           >
-                            {isCreatingProject ? (
-                              <div className="flex items-center gap-2">
-                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                                Creando...
-                              </div>
-                            ) : (
-                              "Confirmar y Crear"
-                            )}
-                          </Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-                  </div>
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                selectedWorkflowId === item.id
+                                  ? "opacity-100"
+                                  : "opacity-0",
+                              )}
+                            />
+                            {item.name}
+                          </ComboboxItem>
+                        )}
+                      </ComboboxList>
+                    </ComboboxContent>
+                  </Combobox>
                 </div>
 
+                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      disabled={!sketchFile}
+                      className={cn(
+                        "h-10 md:h-12 bg-enfasis-1 hover:bg-enfasis-1/90 px-3 text-enfasis-6 hover:text-enfasis-6 transition-all",
+                        !sketchFile &&
+                          "opacity-50 grayscale cursor-not-allowed",
+                      )}
+                    >
+                      <Plus className="h-4 w-4 md:mr-1" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                      <DialogTitle className="text-enfasis-1">
+                        Nuevo Flujo de Diseño
+                      </DialogTitle>
+                    </DialogHeader>
+                    <div className="py-6 space-y-4">
+                      <div className="space-y-2">
+                        <Label
+                          htmlFor="workflow-name"
+                          className="text-enfasis-5 font-semibold"
+                        >
+                          Nombre del flujo de diseño
+                        </Label>
+                        <Input
+                          id="workflow-name"
+                          placeholder="Ej: Zapatilla Urban Pro"
+                          value={newWorkflowName}
+                          onChange={(e) => setNewWorkflowName(e.target.value)}
+                          className="border-enfasis-6 focus:border-enfasis-1"
+                        />
+                      </div>
+                      <div className="bg-slate-50 p-3 rounded-lg border border-dashed border-enfasis-6">
+                        <p className="text-[11px] text-enfasis-5/80 italic leading-relaxed">
+                          * Al crear el flujo de diseño, el boceto que subiste
+                          se vinculará como la base de este flujo.
+                        </p>
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button
+                        className="w-full bg-enfasis-1 hover:bg-enfasis-1/90"
+                        onClick={handleCreateWorkflow}
+                        disabled={isCreatingWorkflow || !newWorkflowName}
+                      >
+                        {isCreatingWorkflow ? (
+                          <div className="flex items-center gap-2">
+                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                            Creando...
+                          </div>
+                        ) : (
+                          "Confirmar y Crear"
+                        )}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </section>
+
+            <section className="mb-6 md:mb-8">
+              <h2 className="mb-4 md:mb-6 text-xs md:text-sm font-bold uppercase tracking-wider text-enfasis-5">
+                3. Parámetros
+              </h2>
+              <div className="space-y-4 md:space-y-6">
                 <div className="space-y-2 md:space-y-3">
                   <Label className="text-sm font-semibold text-enfasis-5">
                     Material
@@ -391,16 +377,13 @@ export default function GeneratorPage() {
                     items={materials}
                     value={selectedMaterial?.name ?? ""}
                     onValueChange={(value) => {
-                      // Ignorar valores vacíos, undefined, null
                       if (!value || value === "" || value === undefined) {
-                        console.log("Ignorando valor inválido");
                         return;
                       }
 
                       const material = materials.find((m) => m.id === value);
 
                       if (material) {
-                        console.log("Material válido encontrado:", material);
                         setSelectedMaterial(material);
                       }
                     }}
@@ -442,7 +425,7 @@ export default function GeneratorPage() {
 
             <Button
               onClick={handleGenerate}
-              disabled={isGenerating || !sketchFile || !selectedProjectId}
+              disabled={isGenerating || !sketchFile || !selectedWorkflowId}
               className="w-full bg-enfasis-1 hover:bg-enfasis-1/90 h-12 md:h-14 md:py-6 text-base md:text-lg font-bold rounded-xl"
             >
               {isGenerating ? "Generando..." : "Generar Diseño"}
