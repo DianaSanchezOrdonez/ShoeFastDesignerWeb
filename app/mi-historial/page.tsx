@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { apiFetch } from "@/lib/api-client";
+import { Generation } from "@/types";
 
 interface Workflow {
   id: string;
@@ -24,16 +25,14 @@ export default function MyHistoricalPage() {
   );
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [generations, setGenerations] = useState<any[]>([]);
+  const [generations, setGenerations] = useState<Generation[]>([]);
   const [originalSketch, setOriginalSketch] = useState<string | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
 
-  // 1. Cargar flujos de diseño desde la API
   useEffect(() => {
     const fetchWorkflows = async () => {
       try {
         setLoading(true);
-        // Ajusta el endpoint según tu router de FastAPI
         const response = await apiFetch("/workflows/");
 
         if (response) {
@@ -213,7 +212,7 @@ export default function MyHistoricalPage() {
                   {/* 2. LISTAR LAS GENERACIONES DE LA IA */}
                   {generations.map((gen, i) => (
                     <Card
-                      key={gen.id || i}
+                      key={gen.generation_id || i}
                       className="overflow-hidden border-none shadow-md group hover:ring-2 ring-enfasis-1 transition-all cursor-pointer"
                     >
                       <CardContent className="p-0">
@@ -252,7 +251,6 @@ export default function MyHistoricalPage() {
                     </Card>
                   ))}
 
-                  {/* ESTADO VACÍO: Si no hay generaciones aún */}
                   {!loadingDetails &&
                     generations.length === 0 &&
                     !originalSketch && (

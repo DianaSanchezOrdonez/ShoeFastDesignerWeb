@@ -31,7 +31,7 @@ export function HistoryDialog({
   onClose,
   onDownload,
 }: HistoryDialogProps) {
-  const [generations, setGenerations] = useState<any[]>([]);
+  const [generations, setGenerations] = useState<Generation[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [sketchUrl, setSketchUrl] = useState<string | null>(null);
 
@@ -126,7 +126,7 @@ export function HistoryDialog({
 
                 <section className="space-y-8 relative before:absolute before:inset-0 before:ml-5 before:h-full before:w-0.5 before:bg-enfasis-5/10">
                   {generations.map((gen, idx) => (
-                    <div key={gen.id || idx} className="relative pl-12">
+                    <div key={gen.generation_id || idx} className="relative pl-12">
                       <div className="absolute left-3 top-1 h-4 w-4 rounded-full border-2 border-enfasis-1 bg-white shadow-sm z-10" />
                       <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col md:flex-row gap-6 hover:shadow-md transition-shadow">
                         <div className="group relative h-40 w-40 bg-enfasis-6 rounded-xl overflow-hidden shrink-0">
