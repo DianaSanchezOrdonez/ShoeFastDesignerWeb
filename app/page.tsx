@@ -112,6 +112,15 @@ export default function GeneratorPage() {
       });
 
       if (response) {
+        const strategy = response.headers.get("X-Strategy");
+  
+        if (strategy === "fallback") {
+          toast.warning("Modelo de respaldo activado", {
+            description: "Debido a la alta demanda, estamos procesando tu diseño con nuestro modelo de respaldo para no interrumpir tu flujo.",
+            icon: null,
+          });
+        }
+
         const blob = await response.blob();
         setGeneratedBlob(blob);
         setGeneratedImageUrl(URL.createObjectURL(blob));
