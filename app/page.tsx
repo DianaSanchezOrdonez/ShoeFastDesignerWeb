@@ -3,13 +3,19 @@
 import React, { useState, ChangeEvent, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Upload, X, Check, Plus } from "lucide-react";
+import {
+  Upload,
+  X,
+  Plus,
+  ImageIcon,
+  RotateCcw,
+  CheckCircle,
+} from "lucide-react";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api-client";
 import {
   Combobox,
   ComboboxContent,
-  ComboboxEmpty,
   ComboboxInput,
   ComboboxItem,
   ComboboxList,
@@ -25,27 +31,15 @@ import {
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
-const materials = [
-  {
-    id: "cuero-negro",
-    name: "Cuero Negro",
-    image: "/materials/leather_black.jpeg",
-  },
-  {
-    id: "cuero-marron",
-    name: "Cuero Marrón",
-    image: "/materials/leather_brown.jpeg",
-  },
-  {
-    id: "cuero-rojo",
-    name: "Cuero Rojo",
-    image: "/materials/leather_red.jpeg",
-  },
-] as const;
-
 interface Workflow {
   id: string;
   name: string;
+}
+
+interface Material {
+  id: string;
+  name: string;
+  image: string;
 }
 
 export default function GeneratorPage() {
@@ -56,6 +50,7 @@ export default function GeneratorPage() {
     null,
   );
   const [generatedBlob, setGeneratedBlob] = useState<Blob | null>(null);
+  const [materials, setMaterials] = useState<Material[]>([]);
   const [selectedMaterial, setSelectedMaterial] = useState<
     (typeof materials)[number] | null
   >(null);
@@ -64,6 +59,7 @@ export default function GeneratorPage() {
   const [newWorkflowName, setNewWorkflowName] = useState("");
   const [isCreatingWorkflow, setIsCreatingWorkflow] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isConfirmCloseOpen, setIsConfirmCloseOpen] = useState(false);
 
   const handleGenerate = async () => {
     if (!sketchFile || !selectedWorkflowId) {
@@ -85,25 +81,8 @@ export default function GeneratorPage() {
       formData.append("workflow_id", selectedWorkflowId);
 
       if (selectedMaterial) {
-        try {
-          const materialResponse = await fetch(selectedMaterial.image);
-          const materialBlob = await materialResponse.blob();
-          formData.append(
-            "material_file",
-            materialBlob,
-            `${selectedMaterial.id}.jpeg`,
-          );
-          formData.append("material_id", selectedMaterial.id);
-        } catch (error) {
-          console.error("Error al cargar la imagen del material:", error);
-          toast.error("Error", {
-            description:
-              "No se pudo cargar la imagen del material seleccionado",
-            icon: null,
-          });
-          setIsGenerating(false);
-          return;
-        }
+        formData.append("material_id", selectedMaterial.id);
+        formData.append("material_url", selectedMaterial.image);
       }
 
       const response = await apiFetch("/sketch-to-image/shoe", {
@@ -113,10 +92,11 @@ export default function GeneratorPage() {
 
       if (response) {
         const strategy = response.headers.get("X-Strategy");
-  
+
         if (strategy === "fallback") {
           toast.warning("Modelo de respaldo activado", {
-            description: "Debido a la alta demanda, estamos procesando tu diseño con nuestro modelo de respaldo para no interrumpir tu flujo.",
+            description:
+              "Debido a la alta demanda, estamos procesando tu diseño con nuestro modelo de respaldo para no interrumpir tu flujo.",
             icon: null,
           });
         }
@@ -193,20 +173,59 @@ export default function GeneratorPage() {
     }
   };
 
+  const loadWorkflows = async () => {
+    try {
+      const response = await apiFetch("/workflows/");
+
+      if (response) {
+        const data = await response.json();
+        setWorkflows(data);
+      }
+    } catch (error) {
+      console.error("Error al cargar flujos de diseño:", error);
+    }
+  };
+
+  const handleCloseWorkflow = async () => {
+    try {
+      setIsConfirmCloseOpen(false);
+
+      await apiFetch(`/workflows/${selectedWorkflowId}/close`, {
+        method: "PATCH",
+      });
+
+      setGeneratedImageUrl(null);
+      setSelectedWorkflowId("");
+      loadWorkflows();
+
+      toast.success("Flujo archivado con éxito", {
+        icon: null,
+      });
+    } catch (e) {
+      toast.error("No se pudo cerrar el flujo", {
+        icon: null,
+      });
+    }
+  };
+
   useEffect(() => {
-    const loadWorkflows = async () => {
+    loadWorkflows();
+  }, []);
+
+  useEffect(() => {
+    const fetchMaterials = async () => {
       try {
-        const response = await apiFetch("/workflows/");
+        const response = await apiFetch("/storage/leathers");
 
         if (response) {
           const data = await response.json();
-          setWorkflows(data);
+          setMaterials(data.leathers);
         }
       } catch (error) {
-        console.error("Error al cargar flujos de diseño:", error);
+        console.error("Error cargando cueros:", error);
       }
     };
-    loadWorkflows();
+    fetchMaterials();
   }, []);
 
   return (
@@ -265,44 +284,28 @@ export default function GeneratorPage() {
               <div className="flex items-center gap-2">
                 <div className="flex-1">
                   <Combobox
-                    items={workflows?.map((w) => ({
-                      id: w.id,
-                      name: w.name,
-                    }))}
-                    value={
-                      workflows?.find((w) => w.id === selectedWorkflowId)
-                        ?.name ?? ""
-                    }
+                    value={selectedWorkflowId}
                     onValueChange={(val) => {
-                      if (val) setSelectedWorkflowId(val);
+                      setSelectedWorkflowId(val ?? "");
                     }}
                   >
                     <div className="relative">
                       <ComboboxInput
                         placeholder="Seleccionar flujo..."
                         className="h-10 md:h-12 w-full rounded-lg border-enfasis-6 bg-white shadow-sm focus:border-enfasis-1"
+                        value={
+                          workflows.find((w) => w.id === selectedWorkflowId)
+                            ?.name ?? ""
+                        }
                       />
                     </div>
                     <ComboboxContent>
-                      <ComboboxEmpty>No hay flujo de diseños.</ComboboxEmpty>
                       <ComboboxList>
-                        {(item) => (
-                          <ComboboxItem
-                            key={item.id}
-                            value={item.id}
-                            className="cursor-pointer"
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                selectedWorkflowId === item.id
-                                  ? "opacity-100"
-                                  : "opacity-0",
-                              )}
-                            />
+                        {workflows.map((item) => (
+                          <ComboboxItem key={item.id} value={item.id}>
                             {item.name}
                           </ComboboxItem>
-                        )}
+                        ))}
                       </ComboboxList>
                     </ComboboxContent>
                   </Combobox>
@@ -383,36 +386,46 @@ export default function GeneratorPage() {
                   </Label>
 
                   <Combobox
-                    items={materials}
-                    value={selectedMaterial?.name ?? ""}
+                    value={selectedMaterial?.id ?? ""}
                     onValueChange={(value) => {
-                      if (!value || value === "" || value === undefined) {
+                      if (!value) {
+                        setSelectedMaterial(null);
                         return;
                       }
 
                       const material = materials.find((m) => m.id === value);
 
                       if (material) {
-                        setSelectedMaterial(material);
+                        setSelectedMaterial(material ?? null);
                       }
                     }}
                   >
                     <ComboboxInput
                       placeholder="Seleccionar material..."
                       className="h-10 md:h-12 w-full rounded-lg border-enfasis-6 bg-white shadow-sm focus:border-enfasis-1"
+                      value={selectedMaterial?.name ?? ""}
                     />
                     <ComboboxContent>
-                      <ComboboxEmpty>
-                        No se encontraron materiales.
-                      </ComboboxEmpty>
                       <ComboboxList>
-                        {(item) => (
+                        <ComboboxItem
+                          value=""
+                          className="flex items-center gap-3 p-2 cursor-pointer text-gray-500 hover:text-gray-700"
+                        >
+                          <div className="h-8 w-8 shrink-0 overflow-hidden rounded-md border bg-gray-100 flex items-center justify-center">
+                            <ImageIcon className="h-4 w-4 text-gray-400" />
+                          </div>
+
+                          <span className="flex-1 font-medium">
+                            Sin material
+                          </span>
+                        </ComboboxItem>
+                        {materials.map((item) => (
                           <ComboboxItem
                             key={item.id}
                             value={item.id}
                             className="flex items-center gap-3 p-2 cursor-pointer"
                           >
-                            <div className="h-10 w-10 shrink-0 overflow-hidden rounded-md border border-gray-100 shadow-sm">
+                            <div className="h-8 w-8 shrink-0 overflow-hidden rounded-md border">
                               <img
                                 src={item.image}
                                 alt={item.name}
@@ -424,7 +437,7 @@ export default function GeneratorPage() {
                               {item.name}
                             </span>
                           </ComboboxItem>
-                        )}
+                        ))}
                       </ComboboxList>
                     </ComboboxContent>
                   </Combobox>
@@ -460,6 +473,72 @@ export default function GeneratorPage() {
                       alt="Generated design"
                       className="w-full h-full object-contain"
                     />
+                  </div>
+
+                  <div className="absolute bottom-6 right-6 flex flex-col items-end gap-3 animate-in slide-in-from-right-4 duration-700">
+                    <div className="flex items-center gap-2 rounded-lg bg-white/80 px-3 py-2 backdrop-blur-sm border border-enfasis-6 shadow-sm">
+                      <span className="text-[11px] font-medium text-enfasis-5 leading-tight">
+                        ✨ ¿Satisfecho con el resultado? <br />
+                      </span>
+                    </div>
+
+                    <Dialog
+                      open={isConfirmCloseOpen}
+                      onOpenChange={setIsConfirmCloseOpen}
+                    >
+                      <DialogTrigger asChild>
+                        <Button className="group h-12 bg-enfasis-1 hover:bg-enfasis-1/90 text-white shadow-xl shadow-enfasis-1/20 px-8 rounded-xl transition-all hover:scale-105 active:scale-95">
+                          <CheckCircle className="mr-2 h-5 w-5" />
+                          Finalizar y Cerrar Flujo
+                        </Button>
+                      </DialogTrigger>
+
+                      <DialogContent className="sm:max-w-[425px] border-enfasis-6">
+                        <DialogHeader className="flex flex-col items-center text-center gap-2">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-enfasis-1/10 mb-2">
+                            <CheckCircle className="h-6 w-6 text-enfasis-1" />
+                          </div>
+                          <DialogTitle className="text-xl font-bold text-enfasis-1">
+                            ¿Finalizar diseño?
+                          </DialogTitle>
+                          <p className="text-sm text-enfasis-5">
+                            Si estás satisfecho con este zapato, lo archivaremos
+                            y limpiaremos la mesa de trabajo para tu próximo
+                            gran diseño.
+                          </p>
+                        </DialogHeader>
+
+                        <div className="bg-slate-50 p-4 rounded-xl border border-dashed border-enfasis-6 my-4">
+                          <div className="flex items-start gap-3">
+                            <div className="mt-0.5 text-enfasis-1 font-bold">
+                              💡
+                            </div>
+                            <p className="text-[11px] text-enfasis-5 leading-relaxed">
+                              Una vez cerrado, el flujo pasará a tu historial de
+                              proyectos terminados y no podrás generar más
+                              variaciones sobre este boceto específico en este
+                              flujo.
+                            </p>
+                          </div>
+                        </div>
+
+                        <DialogFooter className="flex gap-2 sm:gap-0">
+                          <Button
+                            variant="ghost"
+                            onClick={() => setIsConfirmCloseOpen(false)}
+                            className="flex-1 text-enfasis-5 hover:bg-slate-100"
+                          >
+                            Aún no
+                          </Button>
+                          <Button
+                            onClick={handleCloseWorkflow}
+                            className="flex-1 bg-enfasis-1 hover:bg-enfasis-1/90 text-white"
+                          >
+                            Sí, finalizar
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
                   </div>
                 </>
               )}

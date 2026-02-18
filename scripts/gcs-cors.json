@@ -1,0 +1,8 @@
+[
+  {
+    "origin": ["http://localhost:3000", "https://web--shoefastdesigner.us-central1.hosted.app"],
+    "method": ["GET", "HEAD"],
+    "responseHeader": ["Content-Type", "Access-Control-Allow-Origin"],
+    "maxAgeSeconds": 3600
+  }
+]
