@@ -9,12 +9,14 @@ import {
   Download,
   X,
   Clock,
+  CheckCircle,
+  RotateCcw,
 } from "lucide-react";
 import Image from "next/image";
 import { toast } from "sonner";
 import Cookies from "js-cookie";
 import { apiFetch } from "@/lib/api-client";
-import { formatDate } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import { DesignExpander } from "@/components/design-expander";
 import { WorkflowWithGeneration } from "@/types";
 import { HistoryDialog } from "@/components/history-dialog";
@@ -324,17 +326,47 @@ export default function MyDesignsPage() {
                       </div>
                     </div>
 
-                    <div className="p-5 border-t border-enfasis-6 flex justify-between items-center">
-                      <div className="overflow-hidden">
+                    <div className="p-5 border-t border-enfasis-6 flex justify-between items-end bg-white">
+                      <div className="overflow-hidden flex-1">
+                        <div className="mb-2 flex items-center gap-2">
+                          <div
+                            className={cn(
+                              "h-2 w-2 rounded-full shadow-sm",
+                              design.status === "closed"
+                                ? "bg-enfasis-4"
+                                : "bg-enfasis-1 animate-pulse shadow-enfasis-1/50",
+                            )}
+                          />
+                          <span
+                            className={cn(
+                              "text-[10px] font-bold uppercase tracking-wider",
+                              design.status === "closed"
+                                ? "text-enfasis-4"
+                                : "text-enfasis-1",
+                            )}
+                          >
+                            {design.status === "closed"
+                              ? "Diseño Finalizado"
+                              : "Flujo Activo"}
+                          </span>
+                        </div>
+
                         <p className="font-bold text-sm text-enfasis-5 truncate pr-2">
-                          {design.name.split("_")[0]}{" "}
+                          {design.name.split("_")[0]}
                         </p>
-                        <p className="text-[10px] uppercase font-bold text-enfasis-5/40 tracking-widest">
+
+                        <p className="text-[10px] uppercase font-bold text-enfasis-5/40 tracking-widest mt-1">
                           {formatDate(design.latest_generation.created_at)}
                         </p>
                       </div>
-                      {/* Un punto de color por defecto ya que el Bucket no guarda el color del zapato */}
-                      <div className="h-3 w-3 rounded-full bg-enfasis-1 shadow-inner" />
+
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-enfasis-6">
+                        {design.status === "closed" ? (
+                          <CheckCircle className="h-5 w-5 text-enfasis-4" />
+                        ) : (
+                          <RotateCcw className="h-5 w-5 text-enfasis-1 opacity-80" />
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}
