@@ -285,7 +285,7 @@ export default function MyDesignsPage() {
                   >
                     <div className="aspect-square bg-enfasis-6 relative flex items-center justify-center p-4">
                       <Image
-                        src={design.latest_generation.image_url ?? ""}
+                        src={design.latest_generation?.image_url ?? ""}
                         alt={design.name}
                         fill // Ocupa todo el contenedor padre
                         className="object-contain" // Mantiene la proporción del zapato
@@ -356,7 +356,7 @@ export default function MyDesignsPage() {
                         </p>
 
                         <p className="text-[10px] uppercase font-bold text-enfasis-5/40 tracking-widest mt-1">
-                          {formatDate(design.latest_generation.created_at)}
+                          {formatDate(design.latest_generation?.created_at)}
                         </p>
                       </div>
 

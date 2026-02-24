@@ -3,14 +3,7 @@
 import React, { useState, ChangeEvent, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import {
-  Upload,
-  X,
-  Plus,
-  ImageIcon,
-  RotateCcw,
-  CheckCircle,
-} from "lucide-react";
+import { Upload, X, Plus, ImageIcon, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api-client";
 import {
@@ -30,6 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface Workflow {
   id: string;
@@ -40,6 +34,7 @@ interface Material {
   id: string;
   name: string;
   image: string;
+  key: string;
 }
 
 export default function GeneratorPage() {
@@ -60,6 +55,8 @@ export default function GeneratorPage() {
   const [isCreatingWorkflow, setIsCreatingWorkflow] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isConfirmCloseOpen, setIsConfirmCloseOpen] = useState(false);
+  const [butrichMaterials, setButrichMaterials] = useState<Material[]>([]);
+  const [isLoadingMaterials, setIsLoadingMaterials] = useState(true);
 
   const handleGenerate = async () => {
     if (!sketchFile || !selectedWorkflowId) {
@@ -81,7 +78,7 @@ export default function GeneratorPage() {
       formData.append("workflow_id", selectedWorkflowId);
 
       if (selectedMaterial) {
-        formData.append("material_id", selectedMaterial.id);
+        formData.append("material_id", selectedMaterial.key);
         formData.append("material_url", selectedMaterial.image);
       }
 
@@ -213,19 +210,30 @@ export default function GeneratorPage() {
   }, []);
 
   useEffect(() => {
-    const fetchMaterials = async () => {
+    const loadAllMaterials = async () => {
+      setIsLoadingMaterials(true);
       try {
-        const response = await apiFetch("/storage/leathers");
+        // Cargamos ambas fuentes en paralelo para mejor performance
+        const [resStd, resButrich] = await Promise.all([
+          apiFetch("/storage/leathers"),
+          apiFetch("/storage/butrich-collection"),
+        ]);
 
-        if (response) {
-          const data = await response.json();
-          setMaterials(data.leathers);
+        if (resStd) {
+          const data = await resStd.json();
+          setMaterials(data.leathers || []);
+        }
+        if (resButrich) {
+          const data = await resButrich.json();
+          setButrichMaterials(data.collections || []);
         }
       } catch (error) {
-        console.error("Error cargando cueros:", error);
+        console.error("Error cargando materiales:", error);
+      } finally {
+        setIsLoadingMaterials(false);
       }
     };
-    fetchMaterials();
+    loadAllMaterials();
   }, []);
 
   return (
@@ -386,58 +394,111 @@ export default function GeneratorPage() {
                   </Label>
 
                   <Combobox
-                    value={selectedMaterial?.id ?? ""}
+                    value={selectedMaterial?.key ?? ""}
                     onValueChange={(value) => {
                       if (!value) {
                         setSelectedMaterial(null);
                         return;
                       }
 
-                      const material = materials.find((m) => m.id === value);
+                      const material = [...materials, ...butrichMaterials].find(
+                        (m) => m.key === value,
+                      );
 
-                      if (material) {
-                        setSelectedMaterial(material ?? null);
-                      }
+                      if (material) setSelectedMaterial(material ?? null);
                     }}
                   >
-                    <ComboboxInput
-                      placeholder="Seleccionar material..."
-                      className="h-10 md:h-12 w-full rounded-lg border-enfasis-6 bg-white shadow-sm focus:border-enfasis-1"
-                      value={selectedMaterial?.name ?? ""}
-                    />
-                    <ComboboxContent>
+                    <div className="relative flex items-center w-full">
+                      <ComboboxInput
+                        placeholder="Seleccionar material..."
+                        className="h-10 md:h-12 w-full rounded-lg border-enfasis-6 bg-white shadow-sm focus:border-enfasis-1"
+                        value={selectedMaterial?.name ?? ""}
+                      />
+                    </div>
+
+                    <ComboboxContent className="max-h-[400px]">
                       <ComboboxList>
-                        <ComboboxItem
-                          value=""
-                          className="flex items-center gap-3 p-2 cursor-pointer text-gray-500 hover:text-gray-700"
-                        >
-                          <div className="h-8 w-8 shrink-0 overflow-hidden rounded-md border bg-gray-100 flex items-center justify-center">
-                            <ImageIcon className="h-4 w-4 text-gray-400" />
-                          </div>
-
-                          <span className="flex-1 font-medium">
-                            Sin material
-                          </span>
-                        </ComboboxItem>
-                        {materials.map((item) => (
-                          <ComboboxItem
-                            key={item.id}
-                            value={item.id}
-                            className="flex items-center gap-3 p-2 cursor-pointer"
-                          >
-                            <div className="h-8 w-8 shrink-0 overflow-hidden rounded-md border">
-                              <img
-                                src={item.image}
-                                alt={item.name}
-                                className="h-full w-full object-cover"
-                              />
+                        {isLoadingMaterials ? (
+                          <div className="p-2 space-y-3">
+                            <div className="px-2 pb-2">
+                              <Skeleton className="h-3 w-24 bg-enfasis-6" />{" "}
+                              {/* Header skeleton */}
                             </div>
+                            {[1, 2, 3, 4, 5].map((i) => (
+                              <div
+                                key={i}
+                                className="flex items-center gap-3 px-2"
+                              >
+                                <Skeleton className="h-10 w-10 rounded-md bg-enfasis-6" />
+                                <div className="space-y-2 flex-1">
+                                  <Skeleton className="h-4 w-full bg-enfasis-6" />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <>
+                            <ComboboxItem
+                              value=""
+                              className="flex items-center gap-3 p-2 cursor-pointer text-gray-500"
+                            >
+                              <div className="h-8 w-8 shrink-0 overflow-hidden rounded-md border bg-gray-50 flex items-center justify-center">
+                                <ImageIcon className="h-4 w-4 text-gray-300" />
+                              </div>
+                              <span className="flex-1 text-xs">
+                                Sin material
+                              </span>
+                            </ComboboxItem>
 
-                            <span className="flex-1 font-medium text-gray-700">
-                              {item.name}
-                            </span>
-                          </ComboboxItem>
-                        ))}
+                            {butrichMaterials.length > 0 && (
+                              <>
+                                <div className="px-3 py-2 text-[10px] font-bold text-enfasis-2 uppercase tracking-widest bg-enfasis-2/5 border-y border-enfasis-2/10 my-1">
+                                  Colección Exclusiva Butrich
+                                </div>
+                                {butrichMaterials.map((item) => (
+                                  <ComboboxItem
+                                    key={item.key}
+                                    value={item.key}
+                                    className="flex items-center gap-3 p-2"
+                                  >
+                                    <div className="h-10 w-10 shrink-0 overflow-hidden rounded-md border border-enfasis-2/20">
+                                      <img
+                                        src={item.image}
+                                        alt={item.name}
+                                        className="h-full w-full object-cover"
+                                      />
+                                    </div>
+                                    <span className="flex-1 font-semibold text-gray-800">
+                                      {item.name}
+                                    </span>
+                                  </ComboboxItem>
+                                ))}
+                              </>
+                            )}
+
+                            <div className="px-3 py-2 text-[10px] font-bold text-enfasis-5 uppercase tracking-widest mt-2 border-t border-enfasis-6">
+                              Materiales Estándar
+                            </div>
+                            {materials.map((item) => (
+                              <ComboboxItem
+                                key={item.key}
+                                value={item.key}
+                                className="flex items-center gap-3 p-2"
+                              >
+                                <div className="h-10 w-10 shrink-0 overflow-hidden rounded-md border border-gray-100">
+                                  <img
+                                    src={item.image}
+                                    alt={item.name}
+                                    className="h-full w-full object-cover"
+                                  />
+                                </div>
+                                <span className="flex-1 font-medium text-gray-700">
+                                  {item.name}
+                                </span>
+                              </ComboboxItem>
+                            ))}
+                          </>
+                        )}
                       </ComboboxList>
                     </ComboboxContent>
                   </Combobox>
