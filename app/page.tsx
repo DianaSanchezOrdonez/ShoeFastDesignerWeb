@@ -58,11 +58,66 @@ export default function GeneratorPage() {
   const [butrichMaterials, setButrichMaterials] = useState<Material[]>([]);
   const [isLoadingMaterials, setIsLoadingMaterials] = useState(true);
 
+  const [tacon, setTacon] = useState<string>("sin valor");
+  const [plataforma, setPlataforma] = useState<string>("sin valor");
+  const [quiebre, setQuiebre] = useState<number | string>("sin valor");
+  const [tecnicoError, setTecnicoError] = useState<string | null>(null);
+
+  const VALORES_TACON = [
+    { id: "sin valor", name: "Sin valor" },
+    { id: "1", name: "1 cm" },
+    { id: "2", name: "2 cm" },
+    { id: "3", name: "3 cm" },
+    { id: "5", name: "5 cm" },
+    { id: "7", name: "7 cm" },
+    { id: "9", name: "9 cm" },
+    { id: "11", name: "11 cm" },
+    { id: "13", name: "13 cm" },
+  ];
+
+  const VALORES_PLATAFORMA = [
+    { id: "sin valor", name: "Sin valor" },
+    { id: "1", name: "1 cm" },
+    { id: "2", name: "2 cm" },
+    { id: "3", name: "3 cm" },
+    { id: "4", name: "4 cm" },
+    { id: "5", name: "5 cm" },
+    { id: "6", name: "6 cm" },
+    { id: "7", name: "7 cm" },
+  ];
+
+  useEffect(() => {
+    if (tacon !== "sin valor" && plataforma !== "sin valor") {
+      const valTacon = parseInt(tacon);
+      const valPlata = parseInt(plataforma);
+      const calculo = valTacon - valPlata;
+
+      if (calculo <= 0) {
+        setTecnicoError("El tacón debe ser mayor a la plataforma.");
+        setQuiebre("Inválido");
+      } else {
+        setTecnicoError(null);
+        setQuiebre(calculo);
+      }
+    } else {
+      setQuiebre("Sin valor");
+      setTecnicoError(null);
+    }
+  }, [tacon, plataforma]);
+
   const handleGenerate = async () => {
     if (!sketchFile || !selectedWorkflowId) {
       toast.error("Falta el boceto", {
         description:
           "Asegúrate de subir un boceto y seleccionar un flujo de diseño.",
+        icon: null,
+      });
+      return;
+    }
+
+    if (tecnicoError) {
+      toast.error("Error en parámetros técnicos", {
+        description: tecnicoError, // "El tacón debe ser mayor a la plataforma"
         icon: null,
       });
       return;
@@ -76,6 +131,10 @@ export default function GeneratorPage() {
       const formData = new FormData();
       formData.append("file", sketchFile);
       formData.append("workflow_id", selectedWorkflowId);
+
+      formData.append("heel_height", tacon);
+      formData.append("platform_height", plataforma);
+      formData.append("pitch", quiebre.toString().toLowerCase());
 
       if (selectedMaterial) {
         formData.append("material_id", selectedMaterial.key);
@@ -502,6 +561,120 @@ export default function GeneratorPage() {
                       </ComboboxList>
                     </ComboboxContent>
                   </Combobox>
+
+                  <div className="grid grid-cols-2 gap-3 md:gap-4 pt-4 border-t border-enfasis-6">
+                    {/* COMBOBOX TACÓN */}
+                    <div className="space-y-2 md:space-y-3">
+                      <Label className="text-sm font-semibold text-enfasis-5">
+                        Tacón
+                      </Label>
+                      <Combobox
+                        value={tacon}
+                        onValueChange={(val) => setTacon(val ?? "sin valor")}
+                      >
+                        <div className="relative w-full">
+                          <ComboboxInput
+                            placeholder="Tacón..."
+                            className="h-10 md:h-12 w-full rounded-lg border-enfasis-6 bg-white shadow-sm focus:border-enfasis-1"
+                            value={
+                              VALORES_TACON.find((v) => v.id === tacon)?.name ??
+                              ""
+                            }
+                          />
+                        </div>
+                        <ComboboxContent>
+                          <ComboboxList>
+                            {VALORES_TACON.map((item) => (
+                              <ComboboxItem key={item.id} value={item.id}>
+                                {item.name}
+                              </ComboboxItem>
+                            ))}
+                          </ComboboxList>
+                        </ComboboxContent>
+                      </Combobox>
+                    </div>
+
+                    {/* COMBOBOX PLATAFORMA */}
+                    <div className="space-y-2 md:space-y-3">
+                      <Label className="text-sm font-semibold text-enfasis-5">
+                        Plataforma
+                      </Label>
+                      <Combobox
+                        value={plataforma}
+                        onValueChange={(val) =>
+                          setPlataforma(val ?? "sin valor")
+                        }
+                        disabled={tacon === "sin valor"}
+                      >
+                        <div className="relative w-full">
+                          <ComboboxInput
+                            placeholder="Plataforma..."
+                            className={cn(
+                              "h-10 md:h-12 w-full rounded-lg border-enfasis-6 bg-white shadow-sm focus:border-enfasis-1",
+                              tacon === "sin valor" &&
+                                "opacity-50 cursor-not-allowed bg-slate-50",
+                            )}
+                            value={
+                              VALORES_PLATAFORMA.find(
+                                (v) => v.id === plataforma,
+                              )?.name ?? ""
+                            }
+                          />
+                        </div>
+                        <ComboboxContent>
+                          <ComboboxList>
+                            {VALORES_PLATAFORMA.map((item) => (
+                              <ComboboxItem key={item.id} value={item.id}>
+                                {item.name}
+                              </ComboboxItem>
+                            ))}
+                          </ComboboxList>
+                        </ComboboxContent>
+                      </Combobox>
+                    </div>
+                  </div>
+
+                  {/* VISUALIZACIÓN DE QUIEBRE (ESTILO BRANDED) */}
+                  <div
+                    className={cn(
+                      "rounded-xl p-4 border transition-all duration-300",
+                      tecnicoError
+                        ? "bg-red-50 border-red-200"
+                        : "bg-enfasis-1/5 border-enfasis-1/10",
+                    )}
+                  >
+                    <div className="flex justify-between items-center">
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-enfasis-5/70">
+                          Quiebre Resultante
+                        </p>
+                        <p
+                          className={cn(
+                            "text-xl md:text-2xl font-black tracking-tight",
+                            tecnicoError ? "text-red-600" : "text-enfasis-1",
+                          )}
+                        >
+                          {quiebre} {typeof quiebre === "number" && "cm"}
+                        </p>
+                      </div>
+                      <div
+                        className={cn(
+                          "h-10 w-10 rounded-full flex items-center justify-center text-lg shadow-sm",
+                          tecnicoError
+                            ? "bg-red-100 text-red-600"
+                            : "bg-white text-enfasis-1",
+                        )}
+                      >
+                        {tecnicoError ? "⚠️" : "📐"}
+                      </div>
+                    </div>
+
+                    {tecnicoError && (
+                      <p className="mt-2 text-[11px] font-bold text-red-600 animate-pulse">
+                        * {tecnicoError}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
             </section>
