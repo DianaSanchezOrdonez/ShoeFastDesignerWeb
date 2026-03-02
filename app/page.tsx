@@ -24,6 +24,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 
 interface Workflow {
   id: string;
@@ -62,6 +63,8 @@ export default function GeneratorPage() {
   const [plataforma, setPlataforma] = useState<string>("sin valor");
   const [quiebre, setQuiebre] = useState<number | string>("sin valor");
   const [tecnicoError, setTecnicoError] = useState<string | null>(null);
+
+  const [extraInstructions, setExtraInstructions] = useState("");
 
   const VALORES_TACON = [
     { id: "sin valor", name: "Sin valor" },
@@ -135,6 +138,7 @@ export default function GeneratorPage() {
       formData.append("heel_height", tacon);
       formData.append("platform_height", plataforma);
       formData.append("pitch", quiebre.toString().toLowerCase());
+      formData.append("user_prompt", extraInstructions);
 
       if (selectedMaterial) {
         formData.append("material_id", selectedMaterial.key);
@@ -359,7 +363,7 @@ export default function GeneratorPage() {
                     <div className="relative">
                       <ComboboxInput
                         placeholder="Seleccionar flujo..."
-                        className="h-10 md:h-12 w-full rounded-lg border-enfasis-6 bg-white shadow-sm focus:border-enfasis-1"
+                        className="h-10 md:h-12 w-full rounded-lg border-enfasis-6 bg-white shadow-sm focus:border-enfasis-1 text-enfasis-5"
                         value={
                           workflows.find((w) => w.id === selectedWorkflowId)
                             ?.name ?? ""
@@ -470,7 +474,7 @@ export default function GeneratorPage() {
                     <div className="relative flex items-center w-full">
                       <ComboboxInput
                         placeholder="Seleccionar material..."
-                        className="h-10 md:h-12 w-full rounded-lg border-enfasis-6 bg-white shadow-sm focus:border-enfasis-1"
+                        className="h-10 md:h-12 w-full rounded-lg border-enfasis-6 bg-white shadow-sm focus:border-enfasis-1 text-enfasis-5"
                         value={selectedMaterial?.name ?? ""}
                       />
                     </div>
@@ -481,7 +485,6 @@ export default function GeneratorPage() {
                           <div className="p-2 space-y-3">
                             <div className="px-2 pb-2">
                               <Skeleton className="h-3 w-24 bg-enfasis-6" />{" "}
-                              {/* Header skeleton */}
                             </div>
                             {[1, 2, 3, 4, 5].map((i) => (
                               <div
@@ -575,7 +578,7 @@ export default function GeneratorPage() {
                         <div className="relative w-full">
                           <ComboboxInput
                             placeholder="Tacón..."
-                            className="h-10 md:h-12 w-full rounded-lg border-enfasis-6 bg-white shadow-sm focus:border-enfasis-1"
+                            className="h-10 md:h-12 w-full rounded-lg border-enfasis-6 bg-white shadow-sm focus:border-enfasis-1 text-enfasis-5"
                             value={
                               VALORES_TACON.find((v) => v.id === tacon)?.name ??
                               ""
@@ -610,7 +613,7 @@ export default function GeneratorPage() {
                           <ComboboxInput
                             placeholder="Plataforma..."
                             className={cn(
-                              "h-10 md:h-12 w-full rounded-lg border-enfasis-6 bg-white shadow-sm focus:border-enfasis-1",
+                              "h-10 md:h-12 w-full rounded-lg border-enfasis-6 bg-white shadow-sm focus:border-enfasis-1 text-enfasis-5",
                               tacon === "sin valor" &&
                                 "opacity-50 cursor-not-allowed bg-slate-50",
                             )}
@@ -674,6 +677,28 @@ export default function GeneratorPage() {
                         * {tecnicoError}
                       </p>
                     )}
+                  </div>
+
+                  <div className="space-y-2 pt-4 border-t border-enfasis-6">
+                    <Label className="text-sm font-semibold text-enfasis-5 flex justify-between">
+                      Instrucciones adicionales
+                      <span className="text-[10px] text-enfasis-5/50">
+                        {extraInstructions.length}/150
+                      </span>
+                    </Label>
+                    <Textarea
+                      id="extra-prompt"
+                      value={extraInstructions}
+                      onChange={(e) =>
+                        setExtraInstructions(e.target.value.slice(0, 150))
+                      }
+                      placeholder="Ej: Agregar costuras doradas, estilo vintage, efecto charol..."
+                      className="min-h-[100px] text-xs border-enfasis-6 focus-visible:ring-enfasis-1 bg-slate-50/30 resize-none placeholder:text-enfasis-5/40 text-enfasis-5"
+                    />
+                    <p className="text-[10px] text-enfasis-5/60 italic">
+                      * Las instrucciones se aplican sobre el boceto, no lo
+                      reemplazan.
+                    </p>
                   </div>
                 </div>
               </div>
