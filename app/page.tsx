@@ -61,66 +61,28 @@ export default function GeneratorPage() {
 
   const [tacon, setTacon] = useState<string>("sin valor");
   const [plataforma, setPlataforma] = useState<string>("sin valor");
-  const [quiebre, setQuiebre] = useState<number | string>("sin valor");
-  const [tecnicoError, setTecnicoError] = useState<string | null>(null);
 
   const [extraInstructions, setExtraInstructions] = useState("");
 
   const VALORES_TACON = [
     { id: "sin valor", name: "Sin valor" },
-    { id: "1", name: "1 cm" },
-    { id: "2", name: "2 cm" },
-    { id: "3", name: "3 cm" },
-    { id: "5", name: "5 cm" },
-    { id: "7", name: "7 cm" },
-    { id: "9", name: "9 cm" },
-    { id: "11", name: "11 cm" },
-    { id: "13", name: "13 cm" },
+    { id: "bajo", name: "Bajo" },
+    { id: "medio", name: "Medio" },
+    { id: "alto", name: "Alto" },
   ];
 
   const VALORES_PLATAFORMA = [
     { id: "sin valor", name: "Sin valor" },
-    { id: "1", name: "1 cm" },
-    { id: "2", name: "2 cm" },
-    { id: "3", name: "3 cm" },
-    { id: "4", name: "4 cm" },
-    { id: "5", name: "5 cm" },
-    { id: "6", name: "6 cm" },
-    { id: "7", name: "7 cm" },
+    { id: "delgada", name: "Delgada" },
+    { id: "media", name: "Media" },
+    { id: "gruesa", name: "Gruesa" },
   ];
-
-  useEffect(() => {
-    if (tacon !== "sin valor" && plataforma !== "sin valor") {
-      const valTacon = parseInt(tacon);
-      const valPlata = parseInt(plataforma);
-      const calculo = valTacon - valPlata;
-
-      if (calculo <= 0) {
-        setTecnicoError("El tacón debe ser mayor a la plataforma.");
-        setQuiebre("Inválido");
-      } else {
-        setTecnicoError(null);
-        setQuiebre(calculo);
-      }
-    } else {
-      setQuiebre("Sin valor");
-      setTecnicoError(null);
-    }
-  }, [tacon, plataforma]);
 
   const handleGenerate = async () => {
     if (!sketchFile || !selectedWorkflowId) {
       toast.error("Falta el boceto", {
         description:
           "Asegúrate de subir un boceto y seleccionar un flujo de diseño.",
-        icon: null,
-      });
-      return;
-    }
-
-    if (tecnicoError) {
-      toast.error("Error en parámetros técnicos", {
-        description: tecnicoError, // "El tacón debe ser mayor a la plataforma"
         icon: null,
       });
       return;
@@ -135,9 +97,8 @@ export default function GeneratorPage() {
       formData.append("file", sketchFile);
       formData.append("workflow_id", selectedWorkflowId);
 
-      formData.append("heel_height", tacon);
-      formData.append("platform_height", plataforma);
-      formData.append("pitch", quiebre.toString().toLowerCase());
+      formData.append("heel_height", tacon.toLowerCase());
+      formData.append("platform_height", plataforma.toLowerCase());
       formData.append("user_prompt", extraInstructions);
 
       if (selectedMaterial) {
@@ -637,60 +598,18 @@ export default function GeneratorPage() {
                     </div>
                   </div>
 
-                  {/* VISUALIZACIÓN DE QUIEBRE (ESTILO BRANDED) */}
-                  <div
-                    className={cn(
-                      "rounded-xl p-4 border transition-all duration-300",
-                      tecnicoError
-                        ? "bg-red-50 border-red-200"
-                        : "bg-enfasis-1/5 border-enfasis-1/10",
-                    )}
-                  >
-                    <div className="flex justify-between items-center">
-                      <div className="space-y-1">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-enfasis-5/70">
-                          Quiebre Resultante
-                        </p>
-                        <p
-                          className={cn(
-                            "text-xl md:text-2xl font-black tracking-tight",
-                            tecnicoError ? "text-red-600" : "text-enfasis-1",
-                          )}
-                        >
-                          {quiebre} {typeof quiebre === "number" && "cm"}
-                        </p>
-                      </div>
-                      <div
-                        className={cn(
-                          "h-10 w-10 rounded-full flex items-center justify-center text-lg shadow-sm",
-                          tecnicoError
-                            ? "bg-red-100 text-red-600"
-                            : "bg-white text-enfasis-1",
-                        )}
-                      >
-                        {tecnicoError ? "⚠️" : "📐"}
-                      </div>
-                    </div>
-
-                    {tecnicoError && (
-                      <p className="mt-2 text-[11px] font-bold text-red-600 animate-pulse">
-                        * {tecnicoError}
-                      </p>
-                    )}
-                  </div>
-
                   <div className="space-y-2 pt-4 border-t border-enfasis-6">
                     <Label className="text-sm font-semibold text-enfasis-5 flex justify-between">
                       Instrucciones adicionales
                       <span className="text-[10px] text-enfasis-5/50">
-                        {extraInstructions.length}/150
+                        {extraInstructions.length}/250
                       </span>
                     </Label>
                     <Textarea
                       id="extra-prompt"
                       value={extraInstructions}
                       onChange={(e) =>
-                        setExtraInstructions(e.target.value.slice(0, 150))
+                        setExtraInstructions(e.target.value.slice(0, 250))
                       }
                       placeholder="Ej: Agregar costuras doradas, estilo vintage, efecto charol..."
                       className="min-h-[100px] text-xs border-enfasis-6 focus-visible:ring-enfasis-1 bg-slate-50/30 resize-none placeholder:text-enfasis-5/40 text-enfasis-5"
