@@ -602,17 +602,17 @@ export default function GeneratorPage() {
                     <Label className="text-sm font-semibold text-enfasis-5 flex justify-between">
                       Instrucciones adicionales
                       <span className="text-[10px] text-enfasis-5/50">
-                        {extraInstructions.length}/250
+                        {extraInstructions.length}/400
                       </span>
                     </Label>
                     <Textarea
                       id="extra-prompt"
                       value={extraInstructions}
                       onChange={(e) =>
-                        setExtraInstructions(e.target.value.slice(0, 250))
+                        setExtraInstructions(e.target.value.slice(0, 400))
                       }
                       placeholder="Ej: Agregar costuras doradas, estilo vintage, efecto charol..."
-                      className="min-h-[100px] text-xs border-enfasis-6 focus-visible:ring-enfasis-1 bg-slate-50/30 resize-none placeholder:text-enfasis-5/40 text-enfasis-5"
+                      className="min-h-[180px] text-xs border-enfasis-6 focus-visible:ring-enfasis-1 bg-slate-50/30 resize-none placeholder:text-enfasis-5/40 text-enfasis-5"
                     />
                     <p className="text-[10px] text-enfasis-5/60 italic">
                       * Las instrucciones se aplican sobre el boceto, no lo
