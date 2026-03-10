@@ -27,6 +27,8 @@ import {
 } from "@/components/ui/dialog";
 import { sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "@/lib/firebase";
+import Image from "next/image";
+import Link from "next/link";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -104,8 +106,9 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-enfasis-6 p-4">
-      <Card className="w-full max-w-[420px] rounded-[24px] border-none bg-white shadow-xl shadow-slate-200/50">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-enfasis-6 p-6 md:p-10">
+      <div className="hidden md:block h-10" />
+      <Card className="w-full max-w-[420px] rounded-[24px] border-none bg-white shadow-xl shadow-slate-200/50 z-10 transition-shadow hover:shadow-2xl hover:shadow-slate-200/60">
         <CardHeader className="space-y-2 pb-8 pt-10 text-center">
           <div className="flex justify-center mb-2">
             <div className="flex items-center gap-2">
@@ -118,7 +121,6 @@ export default function LoginPage() {
             Bienvenido de nuevo. Ingresa a tu cuenta.
           </CardDescription>
         </CardHeader>
-
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-5">
             <div className="space-y-2">
@@ -188,7 +190,6 @@ export default function LoginPage() {
             </Button>
           </form>
         </CardContent>
-
         <CardFooter className="flex flex-col space-y-4 pb-10 pt-4">
           {/* <button className="text-sm font-medium text-enfasis-2 hover:underline transition-all">
             ¿Olvidaste tu contraseña?
@@ -249,6 +250,115 @@ export default function LoginPage() {
           </Dialog>
         </CardFooter>
       </Card>
+
+      <footer className="mt-auto w-full max-w-[1000px] py-8 px-6 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+        <div className="flex flex-col items-center gap-6">
+          <div className="flex items-center w-full gap-4 max-w-[420px]">
+            <div className="h-[1px] bg-enfasis-5/20 flex-1"></div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-enfasis-5/40 whitespace-nowrap">
+              Marcas que confían en nosotros
+            </p>
+            <div className="h-[1px] bg-enfasis-5/20 flex-1"></div>
+          </div>
+
+          <div className="relative w-full overflow-hidden [mask-image:linear-gradient(to_right,transparent,white_20%,white_80%,transparent)]">
+            <div className="animate-marquee flex items-center gap-x-16 opacity-40 grayscale hover:opacity-100 transition-opacity duration-500">
+              {/* --- BLOQUE ORIGINAL DE LOGOS --- */}
+              <div className="flex items-center gap-x-16">
+                <Link
+                  href="https://butrich.com"
+                  target="_blank"
+                  className="w-[140px] flex justify-center hover:scale-110 transition-transform"
+                >
+                  <Image
+                    src="/brands/butrich_logo.webp"
+                    alt="Butrich"
+                    height={30}
+                    width={140}
+                    className="h-auto w-auto object-contain"
+                    unoptimized
+                  />
+                </Link>
+                <Link
+                  href="https://garcesbottier.com/"
+                  target="_blank"
+                  className="w-[160px] flex justify-center hover:scale-110 transition-transform"
+                >
+                  <Image
+                    src="/brands/garces_bottier_logo.webp"
+                    alt="Garces"
+                    height={42}
+                    width={160}
+                    className="h-auto w-auto object-contain scale-110"
+                    unoptimized
+                  />
+                </Link>
+                <Link
+                  href="https://joycevania.com/"
+                  target="_blank"
+                  className="w-[140px] flex justify-center hover:scale-110 transition-transform"
+                >
+                  <Image
+                    src="/brands/joyce_vania_logo.webp"
+                    alt="Joyce"
+                    height={45}
+                    width={110}
+                    className="h-auto w-auto object-contain"
+                    unoptimized
+                  />
+                </Link>
+              </div>
+
+              {/* --- BLOQUE DUPLICADO (Para el loop infinito sin saltos) --- */}
+              <div className="flex items-center gap-x-16" aria-hidden="true">
+                <Link
+                  href="https://butrich.com"
+                  target="_blank"
+                  className="w-[140px] flex justify-center hover:scale-110 transition-transform"
+                >
+                  <Image
+                    src="/brands/butrich_logo.webp"
+                    alt="Butrich"
+                    height={30}
+                    width={140}
+                    className="h-auto w-auto object-contain"
+                    unoptimized
+                  />
+                </Link>
+                <Link
+                  href="https://garcesbottier.com/"
+                  target="_blank"
+                  className="w-[160px] flex justify-center hover:scale-110 transition-transform"
+                >
+                  <Image
+                    src="/brands/garces_bottier_logo.webp"
+                    alt="Garces"
+                    height={42}
+                    width={160}
+                    className="h-auto w-auto object-contain scale-110"
+                    unoptimized
+                  />
+                </Link>
+                <Link
+                  href="https://joycevania.com/"
+                  target="_blank"
+                  className="w-[140px] flex justify-center hover:scale-110 transition-transform"
+                >
+                  <Image
+                    src="/brands/joyce_vania_logo.webp"
+                    alt="Joyce"
+                    height={45}
+                    width={110}
+                    className="h-auto w-auto object-contain"
+                    unoptimized
+                  />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </footer>
+      <div className="hidden md:block h-10" />
     </div>
   );
 }
