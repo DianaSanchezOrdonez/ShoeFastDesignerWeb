@@ -7,10 +7,11 @@ import {
   Loader2,
   Maximize2,
   Download,
-  X,
   Clock,
   CheckCircle,
   RotateCcw,
+  XCircle,
+  Check,
 } from "lucide-react";
 import Image from "next/image";
 import { toast } from "sonner";
@@ -20,6 +21,16 @@ import { cn, formatDate } from "@/lib/utils";
 import { DesignExpander } from "@/components/design-expander";
 import { WorkflowWithGeneration } from "@/types";
 import { HistoryDialog } from "@/components/history-dialog";
+import imagePlaceholder from "@/public/image_placeholder.webp";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export default function MyDesignsPage() {
   const token = Cookies.get("auth_token");
@@ -132,6 +143,24 @@ export default function MyDesignsPage() {
     } catch (error) {
       console.error("Error en descarga:", error);
       toast.error("No se pudo iniciar la descarga");
+    }
+  };
+
+  const handleCloseWorkflow = async (selectedWorkflowId: string) => {
+    try {
+      await apiFetch(`/workflows/${selectedWorkflowId}/close`, {
+        method: "PATCH",
+      });
+
+      toast.success("Flujo archivado con éxito", {
+        icon: null,
+      });
+
+      await fetchDesigns();
+    } catch (e) {
+      toast.error("No se pudo cerrar el flujo", {
+        icon: null,
+      });
     }
   };
 
@@ -285,7 +314,10 @@ export default function MyDesignsPage() {
                   >
                     <div className="aspect-square bg-enfasis-6 relative flex items-center justify-center p-4">
                       <Image
-                        src={design.latest_generation?.image_url ?? ""}
+                        src={
+                          design.latest_generation?.image_url ||
+                          imagePlaceholder
+                        }
                         alt={design.name}
                         fill // Ocupa todo el contenedor padre
                         className="object-contain" // Mantiene la proporción del zapato
@@ -325,6 +357,64 @@ export default function MyDesignsPage() {
                         </Button>
                       </div>
                     </div>
+
+                    {design.status !== "closed" && (
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <button className="w-full bg-enfasis-1/5 text-enfasis-1 py-2 text-[10px] font-bold uppercase tracking-[0.2em] transition-all border-b border-enfasis-6 flex items-center justify-center gap-2 cursor-pointer shadow-none rounded-none group-hover:text-enfasis-2 group-hover:bg-enfasis-2/20">
+                            ¿Desea Finalizar el Flujo?
+                            <CheckCircle />
+                          </button>
+                        </DialogTrigger>
+
+                        <DialogContent className="sm:max-w-[425px] border-enfasis-6">
+                          <DialogHeader className="flex flex-col items-center text-center gap-2">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-enfasis-1/10 mb-2">
+                              <CheckCircle className="h-6 w-6 text-enfasis-1" />
+                            </div>
+                            <DialogTitle className="text-xl font-bold text-enfasis-1">
+                              ¿Finalizar diseño?
+                            </DialogTitle>
+                            <p className="text-sm text-enfasis-5">
+                              Si estás satisfecho con este zapato, lo
+                              archivaremos y limpiaremos la mesa de trabajo para
+                              tu próximo gran diseño.
+                            </p>
+                          </DialogHeader>
+
+                          <div className="bg-slate-50 p-4 rounded-xl border border-dashed border-enfasis-6 my-4">
+                            <div className="flex items-start gap-3">
+                              <div className="mt-0.5 text-enfasis-1 font-bold">
+                                💡
+                              </div>
+                              <p className="text-[11px] text-enfasis-5 leading-relaxed">
+                                Una vez cerrado, el flujo pasará a tu historial
+                                de proyectos terminados y no podrás generar más
+                                variaciones sobre este boceto específico en este
+                                flujo.
+                              </p>
+                            </div>
+                          </div>
+
+                          <DialogFooter className="flex gap-2 sm:gap-0">
+                            <DialogClose asChild>
+                              <Button
+                                variant="ghost"
+                                className="flex-1 text-enfasis-5 hover:bg-slate-100"
+                              >
+                                Aún no
+                              </Button>
+                            </DialogClose>
+                            <Button
+                              onClick={() => handleCloseWorkflow(design.id)}
+                              className="flex-1 bg-enfasis-1 hover:bg-enfasis-1/90 text-white"
+                            >
+                              Sí, finalizar
+                            </Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                    )}
 
                     <div className="p-5 border-t border-enfasis-6 flex justify-between items-end bg-white">
                       <div className="overflow-hidden flex-1">
