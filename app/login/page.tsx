@@ -33,6 +33,12 @@ import Image from "next/image";
 import butrichLogo from "@/public/brands/butrich_logo.webp";
 import garcesLogo from "@/public/brands/garces_bottier_logo.webp";
 import joyceLogo from "@/public/brands/joyce_vania_logo.webp";
+import humbersLogo from "@/public/brands/humbers_logo.webp";
+import stefaniaLogo from "@/public/brands/stefania_logo.webp";
+import geppettaLogo from "@/public/brands/geppetta_logo.webp";
+import betnashoesLogo from "@/public/brands/betnashoes_logo.webp";
+import lacaneaLogo from "@/public/brands/lacanea_logo.webp";
+import miralosLogo from "@/public/brands/miralos_logo.webp";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -274,8 +280,23 @@ export default function LoginPage() {
                 src={garcesLogo}
                 alt="Garces"
                 height={42}
-                width={160}
+                width={140}
                 className="h-auto w-auto object-contain scale-110"
+                unoptimized
+              />
+            </Link>
+
+            <Link
+              href="https://joycevania.com/"
+              target="_blank"
+              className="flex justify-center items-center opacity-50 hover:opacity-100 hover:scale-110 transition-transform duration-300 w-[120px]"
+            >
+              <Image
+                src={joyceLogo}
+                alt="Joyce"
+                height={45}
+                width={110}
+                className="h-auto w-auto object-contain"
                 unoptimized
               />
             </Link>
@@ -296,15 +317,86 @@ export default function LoginPage() {
             </Link>
 
             <Link
-              href="https://joycevania.com/"
+              href="https://geppetta.cl/"
               target="_blank"
               className="flex justify-center items-center opacity-50 hover:opacity-100 hover:scale-110 transition-transform duration-300 w-[120px]"
             >
               <Image
-                src={joyceLogo}
-                alt="Joyce"
+                src={geppettaLogo}
+                alt="Geppetta"
                 height={45}
-                width={110}
+                width={120}
+                className="h-auto w-auto object-contain"
+                unoptimized
+              />
+            </Link>
+
+            <Link
+              href="https://calzadoshumbers.com/"
+              target="_blank"
+              className="flex justify-center items-center opacity-50 hover:opacity-100 hover:scale-110 transition-transform duration-300 w-[120px]"
+            >
+              <Image
+                src={humbersLogo}
+                alt="Humbers"
+                height={45}
+                width={120}
+                className="h-auto w-auto object-contain"
+                unoptimized
+              />
+            </Link>
+
+            <Link
+              href="https://lacaneape.com/"
+              target="_blank"
+              className="flex justify-center items-center opacity-50 hover:opacity-100 hover:scale-110 transition-transform duration-300 w-[120px]"
+            >
+              <Image
+                src={lacaneaLogo}
+                alt="La Canea"
+                height={45}
+                width={120}
+                className="h-auto w-auto object-contain"
+                unoptimized
+              />
+            </Link>
+
+            <Link
+              href="https://betnashoes.com/"
+              target="_blank"
+              className="flex justify-center items-center opacity-50 hover:opacity-100 hover:scale-110 transition-transform duration-300 w-[120px]"
+            >
+              <Image
+                src={betnashoesLogo}
+                alt="Betnashoes"
+                height={45}
+                width={120}
+                className="h-auto w-auto object-contain"
+                unoptimized
+              />
+            </Link>
+
+            <div className="flex justify-center items-center opacity-50 hover:opacity-100 hover:scale-110 transition-transform duration-300 w-[120px]">
+              <Image
+                src={stefaniaLogo}
+                alt="Stefania"
+                height={45}
+                width={120}
+                className="h-auto w-auto object-contain"
+                unoptimized
+              />
+            </div>
+
+            <Link
+              href="https://www.instagram.com/miralos.pe/"
+              target="_blank"
+              className="flex justify-center items-center opacity-50 hover:opacity-100 hover:scale-110 transition-transform duration-300 w-[80px]"
+            >
+              <Image
+                src={miralosLogo}
+                alt="Miralos"
+                height={35}
+                width={80}
                 className="h-auto w-auto object-contain"
                 unoptimized
               />
